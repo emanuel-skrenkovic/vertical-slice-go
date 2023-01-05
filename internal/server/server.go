@@ -2,6 +2,7 @@ package server
 
 import (
 	"log"
+	"net"
 	"net/http"
 
 	"github.com/eskrenkovic/mediator-go"
@@ -9,6 +10,9 @@ import (
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/product"
 	productCommands "github.com/eskrenkovic/vertical-slice-go/internal/modules/product/commands"
+
+	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -23,9 +27,16 @@ var _ Server = &HTTPServer{}
 
 // Acts as the composition root for an application.
 type HTTPServer struct {
+	server *http.Server
 }
 
 func NewHTTPServer(config config.Config) (Server, error) {
+	router := chi.NewRouter()
+	server := http.Server{
+		Addr:    net.JoinHostPort("", "8080"),
+		Handler: router,
+	}
+
 	db, err := sqlx.Connect("postgres", config.DatabaseURL)
 	if err != nil {
 		return nil, err
@@ -44,11 +55,25 @@ func NewHTTPServer(config config.Config) (Server, error) {
 		return nil, err
 	}
 
-	return &HTTPServer{}, nil
+	productEndpointHandler := product.NewProductsEndpointHandler(m)
+
+	router.Group(func(r chi.Router) {
+		r.Use(middleware.StripSlashes)
+		r.Use(middleware.RequestID)
+		r.Use(middleware.Logger)
+
+		router.Route("/products", func(r chi.Router) {
+			r.Post("/", productEndpointHandler.HandleCreateProduct)
+		})
+	})
+
+	return &HTTPServer{
+		server: &server,
+	}, nil
 }
 
 func (s *HTTPServer) Start() error {
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+	if err := s.server.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
 
@@ -56,5 +81,5 @@ func (s *HTTPServer) Start() error {
 }
 
 func (s *HTTPServer) Stop() error {
-	return nil
+	return s.server.Close()
 }
