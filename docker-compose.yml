@@ -1,0 +1,61 @@
+version: '2.4'
+services:
+  vsg-postgres:
+    container_name: vsg.postgres
+    image: postgres:14-alpine
+    command: ["postgres"]
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=diagraph
+    ports:
+      - "5432:5432"
+    expose:
+      - "5432"
+    networks:
+      - vsg-network
+
+  vsg-redis:
+    container_name: vsg.redis
+    image: redis:7.0.0-alpine
+    command: ["redis-server"]
+    ports:
+      - "6379:6379"
+    expose:
+      - "6379"
+    networks:
+      - vsg-network
+
+  vsg-mailhog:
+    container_name: vsg.mailhog
+    image: mailhog/mailhog
+    command: ["mailhog"]
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    expose:
+      - "1025"
+    networks:
+      - vsg-network
+
+  vsg-eventstore:
+    container_name: vsg.eventstore
+    image: eventstore/eventstore
+    environment:
+      - EVENTSTORE_CLUSTER_SIZE=1
+      - EVENTSTORE_RUN_PROJECTIONS=ALl
+      - EVENTSTORE_START_STANDARD_PROJECTIONS=true
+      - EVENTSTORE_EXT_TCP_PORT=1113
+      - EVENTSTORE_HTTP_PORT=2113
+      - EVENTSTORE_INSECURE=true
+      - EVENTSTORE_ENABLE_EXTERNAL_TCP=true
+      - EVENTSTORE_ENABLE_ATOM_PUB_OVER_HTTP=true
+    ports:
+      - "1113:1113"
+      - "2113:2113"
+    networks:
+      - vsg-network
+
+networks:
+  vsg-network:
+    name: vsg-network

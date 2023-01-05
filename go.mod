@@ -9,6 +9,7 @@ require (
 )
 
 require (
+	github.com/go-chi/chi v1.5.4 // indirect
 	github.com/jmoiron/sqlx v1.3.5 // indirect
 	github.com/lib/pq v1.10.7 // indirect
 )

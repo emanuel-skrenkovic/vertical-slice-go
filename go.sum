@@ -1,5 +1,7 @@
 github.com/eskrenkovic/mediator-go v0.0.1 h1:oqO5JnXC/1C8gi6h9U6y6d5x0udcRbHGyv0A/qMvu6o=
 github.com/eskrenkovic/mediator-go v0.0.1/go.mod h1:CCSt9pGbAmsA96FA1VpmL+lMrpseaAfZEbbAkLbXL2k=
+github.com/go-chi/chi v1.5.4 h1:QHdzF2szwjqVV4wmByUnTcsbIg7UGaQ0tPF2t5GcAIs=
+github.com/go-chi/chi v1.5.4/go.mod h1:uaf8YgoFazUOkPBG7fxPftUylNumIev9awIWOENIuEg=
 github.com/go-sql-driver/mysql v1.6.0/go.mod h1:DCzpHaOWr8IXmIStZouvnhqoel9Qv2LBy8hT2VhHyBg=
 github.com/google/uuid v1.3.0 h1:t6JiXgmwXMjEs8VusXIJk2BXHsn+wx8BZdTaoZ5fu7I=
 github.com/google/uuid v1.3.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
