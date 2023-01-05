@@ -9,7 +9,7 @@ import (
 	"github.com/eskrenkovic/vertical-slice-go/internal/config"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/product"
-	productCommands "github.com/eskrenkovic/vertical-slice-go/internal/modules/product/commands"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -31,6 +31,11 @@ type HTTPServer struct {
 }
 
 func NewHTTPServer(config config.Config) (Server, error) {
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		return nil, err
+	}
+
 	router := chi.NewRouter()
 	server := http.Server{
 		Addr:    net.JoinHostPort("", "8080"),
@@ -44,10 +49,15 @@ func NewHTTPServer(config config.Config) (Server, error) {
 
 	productRepository := product.NewProductRepository(db)
 
-	m := mediator.NewMediator()
+	requestLoggingBehavior := core.RequestLoggingBehavior{Logger: logger}
+	handlerErrorLoggingBehavior := core.HandlerErrorLoggingBehavior{Logger: logger}
 
-	createProductHandler := productCommands.NewCreateProductHandler(productRepository)
-	err = mediator.RegisterRequestHandler[productCommands.CreateProductCommand, core.CommandResponse](
+	m := mediator.NewMediator()
+	m.RegisterPipelineBehavior(&requestLoggingBehavior)
+	m.RegisterPipelineBehavior(&handlerErrorLoggingBehavior)
+
+	createProductHandler := product.NewCreateProductHandler(productRepository)
+	err = mediator.RegisterRequestHandler[product.CreateProductCommand, core.CommandResponse](
 		m,
 		createProductHandler,
 	)
