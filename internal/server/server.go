@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"log"
 	"net"
 	"net/http"
@@ -9,7 +10,7 @@ import (
 	"github.com/eskrenkovic/vertical-slice-go/internal/config"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/product"
-	productCommands "github.com/eskrenkovic/vertical-slice-go/internal/modules/product/commands"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -31,10 +32,17 @@ type HTTPServer struct {
 }
 
 func NewHTTPServer(config config.Config) (Server, error) {
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		return nil, err
+	}
+
+	baseCtx := context.Background()
+
 	router := chi.NewRouter()
 	server := http.Server{
 		Addr:    net.JoinHostPort("", "8080"),
-		Handler: router,
+		Handler: handlerWithBaseContext(baseCtx, router),
 	}
 
 	db, err := sqlx.Connect("postgres", config.DatabaseURL)
@@ -44,10 +52,15 @@ func NewHTTPServer(config config.Config) (Server, error) {
 
 	productRepository := product.NewProductRepository(db)
 
-	m := mediator.NewMediator()
+	requestLoggingBehavior := core.RequestLoggingBehavior{Logger: logger}
+	handlerErrorLoggingBehavior := core.HandlerErrorLoggingBehavior{Logger: logger}
 
-	createProductHandler := productCommands.NewCreateProductHandler(productRepository)
-	err = mediator.RegisterRequestHandler[productCommands.CreateProductCommand, core.CommandResponse](
+	m := mediator.NewMediator()
+	m.RegisterPipelineBehavior(&requestLoggingBehavior)
+	m.RegisterPipelineBehavior(&handlerErrorLoggingBehavior)
+
+	createProductHandler := product.NewCreateProductHandler(productRepository)
+	err = mediator.RegisterRequestHandler[product.CreateProductCommand, core.CommandResponse](
 		m,
 		createProductHandler,
 	)
@@ -55,14 +68,15 @@ func NewHTTPServer(config config.Config) (Server, error) {
 		return nil, err
 	}
 
-	productEndpointHandler := product.NewProductsEndpointHandler(m)
+	productEndpointHandler := product.NewProductsEndpointHandler(m, logger)
 
 	router.Group(func(r chi.Router) {
-		r.Use(middleware.StripSlashes)
-		r.Use(middleware.RequestID)
-		r.Use(middleware.Logger)
-
 		router.Route("/products", func(r chi.Router) {
+			r.Use(middleware.StripSlashes)
+			r.Use(middleware.Logger)
+			r.Use(middleware.RequestID)
+			r.Use(core.CorrelationIDHTTPMiddleware)
+
 			r.Post("/", productEndpointHandler.HandleCreateProduct)
 		})
 	})
@@ -82,4 +96,21 @@ func (s *HTTPServer) Start() error {
 
 func (s *HTTPServer) Stop() error {
 	return s.server.Close()
+}
+
+func handlerWithBaseContext(baseCtx context.Context, handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		baseCtx := baseCtx
+
+		if v, ok := ctx.Value(http.ServerContextKey).(*http.Server); ok {
+			baseCtx = context.WithValue(baseCtx, http.ServerContextKey, v)
+		}
+
+		if v, ok := ctx.Value(http.LocalAddrContextKey).(net.Addr); ok {
+			baseCtx = context.WithValue(baseCtx, http.LocalAddrContextKey, v)
+		}
+
+		handler.ServeHTTP(w, r.WithContext(baseCtx))
+	})
 }
