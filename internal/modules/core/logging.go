@@ -19,9 +19,23 @@ func (b *RequestLoggingBehavior) Handle(
 	request interface{},
 	next mediator.RequestHandlerFunc,
 ) (interface{}, error) {
-	if request != nil {
-		b.Logger.Info("processing request", zap.Any("request", request))
+	var logFields []zap.Field
+
+	requestID := ctx.Value(0)
+	if requestID != nil && requestID != "" {
+		logFields = append(logFields, zap.Any("request_id", requestID))
 	}
+
+	correlationID := ctx.Value(CorrelationIDContextKey)
+	if correlationID != nil && correlationID != "" {
+		logFields = append(logFields, zap.Any("correlation_id", correlationID))
+	}
+
+	if request != nil {
+		logFields = append(logFields, zap.Any("request_body", request))
+	}
+
+	b.Logger.Info("processing request", logFields...)
 
 	return next(ctx, request)
 }
