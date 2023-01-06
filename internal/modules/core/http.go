@@ -8,8 +8,7 @@ import (
 )
 
 const (
-	CorrelationIDHeader = "Correlation-Id"
-
+	CorrelationIDHeader     = "Correlation-Id"
 	CorrelationIDContextKey = "correlation_id"
 )
 

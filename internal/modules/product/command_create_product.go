@@ -4,18 +4,17 @@ import (
 	"context"
 
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
-	"github.com/eskrenkovic/vertical-slice-go/internal/modules/product"
 )
 
 type CreateProductCommand struct {
-	Product product.Product
+	Product Product
 }
 
 type CreateProductHandler struct {
-	repository *product.ProductRepository
+	repository *ProductRepository
 }
 
-func NewCreateProductHandler(repository *product.ProductRepository) *CreateProductHandler {
+func NewCreateProductHandler(repository *ProductRepository) *CreateProductHandler {
 	return &CreateProductHandler{repository}
 }
 

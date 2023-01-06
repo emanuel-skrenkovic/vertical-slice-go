@@ -68,7 +68,7 @@ func NewHTTPServer(config config.Config) (Server, error) {
 		return nil, err
 	}
 
-	productEndpointHandler := product.NewProductsEndpointHandler(m, logger)
+	productEndpointHandler := product.NewProductsEndpointHandler(m)
 
 	router.Group(func(r chi.Router) {
 		router.Route("/products", func(r chi.Router) {
