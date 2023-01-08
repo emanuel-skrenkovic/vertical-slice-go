@@ -10,11 +10,12 @@ import (
 	"github.com/eskrenkovic/vertical-slice-go/internal/config"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/product"
-	"go.uber.org/zap"
+
+	"github.com/eskrenkovic/vertical-slice-go/pkg/sql-migrations"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-
+	"go.uber.org/zap"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
@@ -50,6 +51,10 @@ func NewHTTPServer(config config.Config) (Server, error) {
 		return nil, err
 	}
 
+	if err := sqlmigration.Run("db/migrations", config.DatabaseURL); err != nil {
+		return nil, err
+	}
+
 	productRepository := product.NewProductRepository(db)
 
 	requestLoggingBehavior := core.RequestLoggingBehavior{Logger: logger}
@@ -59,15 +64,20 @@ func NewHTTPServer(config config.Config) (Server, error) {
 	m.RegisterPipelineBehavior(&requestLoggingBehavior)
 	m.RegisterPipelineBehavior(&handlerErrorLoggingBehavior)
 
+	// handler registration
 	createProductHandler := product.NewCreateProductHandler(productRepository)
-	err = mediator.RegisterRequestHandler[product.CreateProductCommand, core.CommandResponse](
-		m,
-		createProductHandler,
-	)
+	err = mediator.RegisterRequestHandler[product.CreateProductCommand, core.Unit](m, createProductHandler)
 	if err != nil {
 		return nil, err
 	}
 
+	getProductHandler := product.NewGetProductQueryHandler(productRepository)
+	err = mediator.RegisterRequestHandler[product.GetProductQuery, product.Product](m, getProductHandler)
+	if err != nil {
+		return nil, err
+	}
+
+	// http
 	productEndpointHandler := product.NewProductsEndpointHandler(m)
 
 	router.Group(func(r chi.Router) {
@@ -78,6 +88,7 @@ func NewHTTPServer(config config.Config) (Server, error) {
 			r.Use(core.CorrelationIDHTTPMiddleware)
 
 			r.Post("/", productEndpointHandler.HandleCreateProduct)
+			r.Get("/{product_id}", productEndpointHandler.HandleGetProduct)
 		})
 	})
 
