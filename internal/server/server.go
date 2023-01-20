@@ -59,14 +59,18 @@ func NewHTTPServer(config config.Config) (Server, error) {
 
 	requestLoggingBehavior := core.RequestLoggingBehavior{Logger: logger}
 	handlerErrorLoggingBehavior := core.HandlerErrorLoggingBehavior{Logger: logger}
+	requestValidationBehavior := core.RequestValidationBehavior{}
 
 	m := mediator.NewMediator()
 	m.RegisterPipelineBehavior(&requestLoggingBehavior)
 	m.RegisterPipelineBehavior(&handlerErrorLoggingBehavior)
+	m.RegisterPipelineBehavior(&requestValidationBehavior)
 
 	// handler registration
 	createProductHandler := product.NewCreateProductHandler(productRepository)
-	err = mediator.RegisterRequestHandler[product.CreateProductCommand, core.Unit](m, createProductHandler)
+	err = mediator.RegisterRequestHandler[product.CreateProductCommand, product.CreateProductResponse](
+		m, createProductHandler,
+	)
 	if err != nil {
 		return nil, err
 	}

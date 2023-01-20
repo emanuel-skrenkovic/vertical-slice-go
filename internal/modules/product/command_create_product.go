@@ -9,7 +9,11 @@ import (
 )
 
 type CreateProductCommand struct {
-	Product CreateProductModel
+	Product CreateProductModel `json:"product"`
+}
+
+type CreateProductResponse struct {
+	ProductID uuid.UUID
 }
 
 func (c CreateProductCommand) Validate() error {
@@ -43,14 +47,8 @@ func NewCreateProductHandler(repository *ProductRepository) *CreateProductHandle
 	return &CreateProductHandler{repository}
 }
 
-func (h *CreateProductHandler) Handle(ctx context.Context, request CreateProductCommand) (core.Unit, error) {
+func (h *CreateProductHandler) Handle(ctx context.Context, request CreateProductCommand) (CreateProductResponse, error) {
 	product := request.Product
-
-	// TODO: move to pipeline behavior
-	if err := request.Validate(); err != nil {
-		return core.Unit{}, core.NewCommandError(400, err, "command validation failed")
-	}
-
 	err := h.repository.SaveProduct(ctx, Product{
 		ID:          uuid.New(),
 		SKU:         product.SKU,
@@ -59,8 +57,9 @@ func (h *CreateProductHandler) Handle(ctx context.Context, request CreateProduct
 		Price:       product.Price,
 	})
 	if err != nil {
-		return core.Unit{}, core.NewCommandError(500, err, "failed to insert product to database")
+		return CreateProductResponse{}, core.NewCommandError(500, err, "failed to insert product to database")
 	}
 
-	return core.Unit{}, nil
+	productID := uuid.New()
+	return CreateProductResponse{ProductID: productID}, nil
 }
