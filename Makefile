@@ -1,7 +1,6 @@
 .PHONY: build
 build:
 	go build cmd/api/main.go
-	go build pkg/sql-migrations/migration.go
 	go build pkg/env/env.go
 
 run:

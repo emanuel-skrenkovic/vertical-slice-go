@@ -11,7 +11,7 @@ import (
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/product"
 
-	"github.com/eskrenkovic/vertical-slice-go/pkg/sql-migrations"
+	"github.com/eskrenkovic/vertical-slice-go/internal/sql-migrations"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
