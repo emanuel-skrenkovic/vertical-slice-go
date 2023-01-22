@@ -6,12 +6,12 @@ kill_timeout = 5
 processes = []
 
 [build]
-  builder = "paketobuildpacks/builder:base"
-  buildpacks = ["gcr.io/paketo-buildpacks/go"]
+  image = "registry.fly.io/vertical-slice-go:latest"
 
 [env]
   PORT = "8080"
-  GOPRIVATE="github.com/eskrenkovic/*"
+  GOPRIVATE="github.com/eskrenkovic/vertical-slice-go/*"
+  ROOT_PATH="./"
 
 [experimental]
   auto_rollback = true

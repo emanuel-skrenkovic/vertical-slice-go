@@ -11,4 +11,4 @@ test:
 
 .PHONY: docker-build
 docker-build:
-	docker build --build-arg github_token=$(GITHUB_TOKEN) --build-arg goprivate=$(GOPRIVATE) .
+	docker build -t vertical-slice-go -t registry.fly.io/vertical-slice-go:latest --build-arg github_token=$(GITHUB_TOKEN) --build-arg goprivate=$(GOPRIVATE) .

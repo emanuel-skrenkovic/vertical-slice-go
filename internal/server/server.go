@@ -51,7 +51,7 @@ func NewHTTPServer(config config.Config) (Server, error) {
 		return nil, err
 	}
 
-	if err := sqlmigration.Run("db/migrations", config.DatabaseURL); err != nil {
+	if err := sqlmigration.Run(config.MigrationsPath, config.DatabaseURL); err != nil {
 		return nil, err
 	}
 

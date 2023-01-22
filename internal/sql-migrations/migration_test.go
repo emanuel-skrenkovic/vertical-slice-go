@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/eskrenkovic/vertical-slice-go/internal/config"
+	"github.com/joho/godotenv"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -69,12 +70,24 @@ func TestMain(m *testing.M) {
 		log.Fatal("root directoy path is empty")
 	}
 
-	// Otherwise, doesn't work from Goland.
-	// Need to pass in through other means than args
-	rootPath = "/home/emanuel/dev/vertical-slice-go"
+	if len(os.Args) > 1 {
+		rootPath = os.Args[1]
+
+		// TODO:
+		// Otherwise, doesn't work from Goland.
+		// Need to pass in through other means than args
+		rootPath = "/home/emanuel/dev/vertical-slice-go"
+		if rootPath == "" {
+			log.Fatal("root directoy path is empty")
+		}
+
+		if err := godotenv.Load(path.Join(rootPath, "config.env")); err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	var err error
-	conf, err = config.Load(path.Join(rootPath, "config.env"))
+	conf, err = config.Load()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -202,7 +215,6 @@ func Test_Reverts_All_Attempted_Migrations_On_Failed_Migration_Attempt_Leaving_P
 		t.Errorf("received unexpected error: %v", err)
 	}
 
-
 	// Act
 	createMigrationFile(t, "dependant_table", depdendantTableUpMigration, depdendantTableDownMigration)
 	createMigrationFile(t, "main_table2", "invalid", "SELECT 1;")
@@ -221,7 +233,6 @@ func Test_Reverts_All_Attempted_Migrations_On_Failed_Migration_Attempt_Leaving_P
 		t.Errorf("expected '%d' migrations found '%d'", expectedMigrationsFound, len(m))
 	}
 }
-
 
 func cleanUpTestMigrations() {
 	db.MustExec("DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public")

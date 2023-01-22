@@ -10,5 +10,6 @@ RUN echo $GOPRIVATE && echo $GITHUB_TOKEN && go mod tidy && \
 
 FROM debian
 WORKDIR /app
-COPY --from=build /app /app
+COPY --from=build /app/main /app/main
+COPY --from=build /app/db/ /app/db/
 CMD ["./main"]

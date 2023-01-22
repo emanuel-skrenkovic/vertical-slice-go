@@ -1,30 +1,36 @@
 package config
 
 import (
-	"github.com/eskrenkovic/vertical-slice-go/internal/env"
+	"path"
 
-	"github.com/joho/godotenv"
+	"github.com/eskrenkovic/vertical-slice-go/internal/env"
 )
 
 const (
 	DatabaseUrlEnv = "DATABASE_URL"
+	RootPathEnv    = "ROOT_PATH"
 )
 
 type Config struct {
-	DatabaseURL string
+	DatabaseURL    string
+	MigrationsPath string
 }
 
-func Load(path string) (Config, error) {
-	if err := godotenv.Load(path); err != nil {
-		return Config{}, err
-	}
-
+func Load() (Config, error) {
 	dbURL, err := env.GetString(DatabaseUrlEnv)
 	if err != nil {
 		return Config{}, err
 	}
 
+	rootPath, err := env.GetString(RootPathEnv)
+	if err != nil {
+		return Config{}, err
+	}
+
+	migrationsPath := path.Join(rootPath, "db", "migrations")
+
 	return Config{
-		DatabaseURL: dbURL,
+		DatabaseURL:    dbURL,
+		MigrationsPath: migrationsPath,
 	}, nil
 }
