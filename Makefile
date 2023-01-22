@@ -8,6 +8,7 @@ run:
 .PHONY: test
 test:
 	go test -v -count=1 ./internal/sql-migrations/... -args $(shell pwd)
+	go test -v -count=1 ./test/... -args $(shell pwd)
 
 .PHONY: docker-build
 docker-build:
