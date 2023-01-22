@@ -1,11 +1,14 @@
 .PHONY: build
 build:
 	go build cmd/api/main.go
-	go build pkg/env/env.go
 
 run:
 	go run cmd/api/main.go $(shell pwd)
 
 .PHONY: test
 test:
-	go test -v -count=1 ./pkg/sql-migrations/... -args $(shell pwd)
+	go test -v -count=1 ./internal/sql-migrations/... -args $(shell pwd)
+
+.PHONY: docker-build
+docker-build:
+	docker build --build-arg github_token=$(GITHUB_TOKEN) --build-arg goprivate=$(GOPRIVATE) .

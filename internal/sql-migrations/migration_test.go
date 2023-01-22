@@ -95,7 +95,7 @@ func TestMain(m *testing.M) {
 
 func Test_Applies_All_Migrations_In_Directory(t *testing.T) {
 	// Arrange
-	testMigrationsPath := path.Join(rootPath, "pkg", "sql-migrations", "test", "migrations", t.Name())
+	testMigrationsPath := migrationPath(t)
 	defer cleanUpTestMigrations()
 	defer func() {
 		if err := os.RemoveAll(testMigrationsPath); err != nil {
@@ -124,7 +124,7 @@ func Test_Applies_All_Migrations_In_Directory(t *testing.T) {
 
 func Test_Applied_Migrations_From_Directory_After_Already_Applied_Version(t *testing.T) {
 	// Arrange
-	testMigrationsPath := path.Join(rootPath, "pkg", "sql-migrations", "test", "migrations", t.Name())
+	testMigrationsPath := migrationPath(t)
 	defer cleanUpTestMigrations()
 	defer func() {
 		if err := os.RemoveAll(testMigrationsPath); err != nil {
@@ -159,7 +159,7 @@ func Test_Applied_Migrations_From_Directory_After_Already_Applied_Version(t *tes
 
 func Test_Reverts_All_Attempted_Migrations_On_Failed_Migration_Attempt(t *testing.T) {
 	// Arrange
-	testMigrationsPath := path.Join(rootPath, "pkg", "sql-migrations", "test", "migrations", t.Name())
+	testMigrationsPath := migrationPath(t)
 	defer cleanUpTestMigrations()
 	defer func() {
 		if err := os.RemoveAll(testMigrationsPath); err != nil {
@@ -189,7 +189,7 @@ func Test_Reverts_All_Attempted_Migrations_On_Failed_Migration_Attempt(t *testin
 
 func Test_Reverts_All_Attempted_Migrations_On_Failed_Migration_Attempt_Leaving_Previous_Migrations(t *testing.T) {
 	// Arrange
-	testMigrationsPath := path.Join(rootPath, "pkg", "sql-migrations", "test", "migrations", t.Name())
+	testMigrationsPath := migrationPath(t)
 	defer cleanUpTestMigrations()
 	defer func() {
 		if err := os.RemoveAll(testMigrationsPath); err != nil {
@@ -228,7 +228,7 @@ func cleanUpTestMigrations() {
 }
 
 func createMigrationFile(t *testing.T, name, upScript, downScript string) {
-	testMigrationsPath := path.Join(rootPath, "pkg", "sql-migrations", "test", "migrations", t.Name())
+	testMigrationsPath := migrationPath(t)
 	if _, err := os.Stat(testMigrationsPath); err != nil && errors.Is(err, os.ErrNotExist) {
 		os.Mkdir(testMigrationsPath, 0755)
 	}
@@ -248,7 +248,7 @@ func createMigrationFile(t *testing.T, name, upScript, downScript string) {
 }
 
 func getMigrationVersion(t *testing.T) int {
-	testMigrationsPath := path.Join(rootPath, "pkg", "sql-migrations", "test", "migrations", t.Name())
+	testMigrationsPath := migrationPath(t)
 
 	entities, err := os.ReadDir(testMigrationsPath)
 	if err != nil {
@@ -288,4 +288,8 @@ func migrations(t *testing.T, db *sqlx.DB) []migration {
 	}
 
 	return m
+}
+
+func migrationPath(t *testing.T) string {
+	return path.Join(rootPath, "internal", "sql-migrations", "test", "migrations", t.Name())
 }

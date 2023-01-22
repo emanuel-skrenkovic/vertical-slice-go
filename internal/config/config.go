@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/eskrenkovic/vertical-slice-go/pkg/env"
+	"github.com/eskrenkovic/vertical-slice-go/internal/env"
 
 	"github.com/joho/godotenv"
 )
