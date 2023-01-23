@@ -17,3 +17,4 @@
 main
 
 pkg/sql-migrations/test
+config.local.env
