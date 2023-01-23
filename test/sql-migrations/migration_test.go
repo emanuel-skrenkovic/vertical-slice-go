@@ -1,4 +1,4 @@
-package sqlmigration
+package main
 
 import (
 	"errors"
@@ -11,6 +11,8 @@ import (
 	"testing"
 
 	"github.com/eskrenkovic/vertical-slice-go/internal/config"
+	sqlmigration "github.com/eskrenkovic/vertical-slice-go/internal/sql-migrations"
+	"github.com/eskrenkovic/vertical-slice-go/internal/test"
 	"github.com/joho/godotenv"
 
 	"github.com/jmoiron/sqlx"
@@ -65,25 +67,35 @@ const (
 )
 
 func TestMain(m *testing.M) {
-	rootPath = os.Args[len(os.Args)-1]
-	if rootPath == "" {
-		log.Fatal("root directoy path is empty")
+	args := os.Args
+
+	if len(args) < 2 {
+		log.Fatal("root path is required")
+	}
+	rootPath = args[len(args)-1]
+	os.Setenv(config.RootPathEnv, rootPath)
+
+	localConfigPath := path.Join(rootPath, "config.local.env")
+	if _, err := os.Stat(localConfigPath); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			f, err := os.Create(localConfigPath)
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer f.Close()
+
+			if _, err := f.Write([]byte("SKIP_INFRASTRUCTURE=false")); err != nil {
+				log.Fatal(err)
+			}
+		}
 	}
 
-	if len(os.Args) > 1 {
-		rootPath = os.Args[1]
+	if err := godotenv.Load(path.Join(rootPath, "config.local.env")); err != nil {
+		log.Fatal(err)
+	}
 
-		// TODO:
-		// Otherwise, doesn't work from Goland.
-		// Need to pass in through other means than args
-		rootPath = "/home/emanuel/dev/vertical-slice-go"
-		if rootPath == "" {
-			log.Fatal("root directoy path is empty")
-		}
-
-		if err := godotenv.Load(path.Join(rootPath, "config.env")); err != nil {
-			log.Fatal(err)
-		}
+	if err := godotenv.Load(path.Join(rootPath, "config.env")); err != nil {
+		log.Fatal(err)
 	}
 
 	var err error
@@ -92,18 +104,31 @@ func TestMain(m *testing.M) {
 		log.Fatal(err)
 	}
 
+	fixture, err := test.NewLocalTestFixture(path.Join(rootPath, "docker-compose.yml"), conf.DatabaseURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := fixture.Start(); err != nil {
+		log.Fatal(err)
+	}
+
+	defer func() {
+		if err := fixture.Stop(); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
 	db, err = sqlx.Connect("postgres", conf.DatabaseURL)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	code := m.Run()
+	_ = m.Run()
 
 	if err := os.RemoveAll(testDir); err != nil {
 		log.Fatal(err)
 	}
-
-	os.Exit(code)
 }
 
 func Test_Applies_All_Migrations_In_Directory(t *testing.T) {
@@ -120,14 +145,14 @@ func Test_Applies_All_Migrations_In_Directory(t *testing.T) {
 	createMigrationFile(t, "dependant_table", depdendantTableUpMigration, depdendantTableDownMigration)
 
 	// Act
-	err := Run(testMigrationsPath, conf.DatabaseURL)
+	err := sqlmigration.Run(testMigrationsPath, conf.DatabaseURL)
 
 	// Assert
 	if err != nil {
 		t.Errorf("unexpected error: %s", err)
 	}
 
-	m := migrations(t, db)
+	m := getMigrations(t, db)
 
 	expectedMigrationsFound := 2
 	if len(m) != expectedMigrationsFound {
@@ -148,21 +173,21 @@ func Test_Applied_Migrations_From_Directory_After_Already_Applied_Version(t *tes
 	createMigrationFile(t, "main_table", mainTableUpMigration, mainTableDownMigration)
 	createMigrationFile(t, "dependant_table", depdendantTableUpMigration, depdendantTableDownMigration)
 
-	err := Run(testMigrationsPath, conf.DatabaseURL)
+	err := sqlmigration.Run(testMigrationsPath, conf.DatabaseURL)
 	if err != nil {
 		t.Errorf("unexpected error: %s", err)
 	}
 
 	// Act
 	createMigrationFile(t, "main_table2", mainTable2UpMigration, mainTable2DownMigration)
-	err = Run(testMigrationsPath, conf.DatabaseURL)
+	err = sqlmigration.Run(testMigrationsPath, conf.DatabaseURL)
 
 	// Assert
 	if err != nil {
 		t.Errorf("unexpected error: %s", err)
 	}
 
-	m := migrations(t, db)
+	m := getMigrations(t, db)
 
 	expectedMigrationsFound := 3
 	if len(m) != expectedMigrationsFound {
@@ -185,14 +210,14 @@ func Test_Reverts_All_Attempted_Migrations_On_Failed_Migration_Attempt(t *testin
 
 	// Act
 	createMigrationFile(t, "main_table2", "invalid", "SELECT 1;")
-	err := Run(testMigrationsPath, conf.DatabaseURL)
+	err := sqlmigration.Run(testMigrationsPath, conf.DatabaseURL)
 
 	// Assert
 	if err == nil {
 		t.Error("did not receive expected error")
 	}
 
-	m := migrations(t, db)
+	m := getMigrations(t, db)
 
 	expectedMigrationsFound := 0
 	if len(m) != expectedMigrationsFound {
@@ -211,14 +236,14 @@ func Test_Reverts_All_Attempted_Migrations_On_Failed_Migration_Attempt_Leaving_P
 	}()
 
 	createMigrationFile(t, "main_table", mainTableUpMigration, mainTableDownMigration)
-	if err := Run(testMigrationsPath, conf.DatabaseURL); err != nil {
+	if err := sqlmigration.Run(testMigrationsPath, conf.DatabaseURL); err != nil {
 		t.Errorf("received unexpected error: %v", err)
 	}
 
 	// Act
 	createMigrationFile(t, "dependant_table", depdendantTableUpMigration, depdendantTableDownMigration)
 	createMigrationFile(t, "main_table2", "invalid", "SELECT 1;")
-	err := Run(testMigrationsPath, conf.DatabaseURL)
+	err := sqlmigration.Run(testMigrationsPath, conf.DatabaseURL)
 
 	// Assert
 	if err == nil {
@@ -226,7 +251,7 @@ func Test_Reverts_All_Attempted_Migrations_On_Failed_Migration_Attempt_Leaving_P
 	}
 
 	createMigrationFile(t, "dependant_table", depdendantTableUpMigration, depdendantTableDownMigration)
-	m := migrations(t, db)
+	m := getMigrations(t, db)
 
 	expectedMigrationsFound := 1
 	if len(m) != expectedMigrationsFound {
@@ -292,8 +317,8 @@ func getMigrationVersion(t *testing.T) int {
 	return highestVersion + 1
 }
 
-func migrations(t *testing.T, db *sqlx.DB) []migration {
-	var m []migration
+func getMigrations(t *testing.T, db *sqlx.DB) []sqlmigration.Migration {
+	var m []sqlmigration.Migration
 	if err := db.Select(&m, "SELECT * FROM schema_migration;"); err != nil {
 		t.Errorf("unexpected error: %s", err)
 	}
@@ -302,5 +327,5 @@ func migrations(t *testing.T, db *sqlx.DB) []migration {
 }
 
 func migrationPath(t *testing.T) string {
-	return path.Join(rootPath, "internal", "sql-migrations", "test", "migrations", t.Name())
+	return path.Join(rootPath, "test", "sql-migrations", "temp", t.Name())
 }

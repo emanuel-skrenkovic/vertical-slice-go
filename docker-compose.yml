@@ -1,7 +1,6 @@
 version: '2.4'
 services:
   vsg-postgres:
-    container_name: vsg.postgres
     image: postgres:14-alpine
     command: ["postgres"]
     environment:
@@ -16,7 +15,6 @@ services:
       - vsg-network
 
   vsg-redis:
-    container_name: vsg.redis
     image: redis:7.0.0-alpine
     command: ["redis-server"]
     ports:
@@ -27,7 +25,6 @@ services:
       - vsg-network
 
   vsg-mailhog:
-    container_name: vsg.mailhog
     image: mailhog/mailhog
     command: ["mailhog"]
     ports:
@@ -39,7 +36,6 @@ services:
       - vsg-network
 
   vsg-eventstore:
-    container_name: vsg.eventstore
     image: eventstore/eventstore
     environment:
       - EVENTSTORE_CLUSTER_SIZE=1

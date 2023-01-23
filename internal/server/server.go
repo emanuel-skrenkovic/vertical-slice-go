@@ -11,13 +11,13 @@ import (
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/product"
 
-	"github.com/eskrenkovic/vertical-slice-go/internal/sql-migrations"
+	sqlmigration "github.com/eskrenkovic/vertical-slice-go/internal/sql-migrations"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"go.uber.org/zap"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"go.uber.org/zap"
 )
 
 type Server interface {
