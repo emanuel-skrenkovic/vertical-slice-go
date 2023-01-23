@@ -48,9 +48,10 @@ func NewCreateProductHandler(repository *ProductRepository) *CreateProductHandle
 }
 
 func (h *CreateProductHandler) Handle(ctx context.Context, request CreateProductCommand) (CreateProductResponse, error) {
+	productID := uuid.New()
 	product := request.Product
 	err := h.repository.SaveProduct(ctx, Product{
-		ID:          uuid.New(),
+		ID:          productID,
 		SKU:         product.SKU,
 		Name:        product.Name,
 		Description: product.Description,
@@ -60,6 +61,5 @@ func (h *CreateProductHandler) Handle(ctx context.Context, request CreateProduct
 		return CreateProductResponse{}, core.NewCommandError(500, err, "failed to insert product to database")
 	}
 
-	productID := uuid.New()
 	return CreateProductResponse{ProductID: productID}, nil
 }

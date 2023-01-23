@@ -2,7 +2,6 @@ package core
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 )
 
@@ -16,8 +15,7 @@ type ResponseOption func(http.ResponseWriter, *http.Request)
 
 func WithHeader(header, value string) ResponseOption {
 	return func(w http.ResponseWriter, r *http.Request) {
-		fmt.Printf("%s %s", header, value)
-		r.Response.Header.Add(header, value)
+		w.Header().Add(header, value)
 	}
 }
 
@@ -57,11 +55,11 @@ func WriteResponse(
 	body interface{},
 	opts ...ResponseOption,
 ) {
-	w.WriteHeader(statusCode)
 	for _, opt := range opts {
 		opt(w, r)
 	}
 	writeBodyIfPresent(w, body)
+	w.WriteHeader(statusCode)
 }
 
 func writeBodyIfPresent(w http.ResponseWriter, body interface{}) {

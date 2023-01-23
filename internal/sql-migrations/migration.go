@@ -13,7 +13,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-type migration struct {
+type Migration struct {
 	ID         int    `db:"id"`
 	Version    int    `db:"version"`
 	Name       string `db:"name"`
@@ -42,7 +42,7 @@ func Run(migrationsPath string, connectionString string) error {
 		return nil
 	}
 
-	migrations := make(map[int]migration, 0)
+	migrations := make(map[int]Migration, 0)
 
 	for _, entry := range entries {
 		// Sanity checks - only root directory, needs to have a name by convention
@@ -65,7 +65,7 @@ func Run(migrationsPath string, connectionString string) error {
 			return err
 		}
 
-		var m migration
+		var m Migration
 		m = migrations[migrationNumber]
 
 		m.Version = migrationNumber
@@ -101,7 +101,7 @@ func Run(migrationsPath string, connectionString string) error {
 	}
 
 	// TODO: find diff between DB and file-defined migrations
-	var alreadyAppliedMigrations []migration
+	var alreadyAppliedMigrations []Migration
 	if err = db.Select(&alreadyAppliedMigrations, getAppliedMigrationsQuery()); err != nil {
 		return err
 	}
@@ -111,7 +111,7 @@ func Run(migrationsPath string, connectionString string) error {
 		lastAppliedMigrationVersion = alreadyAppliedMigrations[0].Version
 	}
 
-	var migrationsToApply []migration
+	var migrationsToApply []Migration
 	for migrationVersion, migration := range migrations {
 		if migrationVersion <= lastAppliedMigrationVersion {
 			continue
@@ -128,7 +128,7 @@ func Run(migrationsPath string, connectionString string) error {
 		return migrationsToApply[i].Version < migrationsToApply[j].Version
 	})
 
-	newlyAppliedMigrations := []migration{}
+	newlyAppliedMigrations := []Migration{}
 
 	var migrationErr error
 	for _, migration := range migrationsToApply {
@@ -187,7 +187,7 @@ func Run(migrationsPath string, connectionString string) error {
 	return nil
 }
 
-func validateFoundMigrationFiles(migrations map[int]migration) error {
+func validateFoundMigrationFiles(migrations map[int]Migration) error {
 	var missingScriptsErr error
 	for _, migration := range migrations {
 		if migration.DownScript == "" {
@@ -201,7 +201,7 @@ func validateFoundMigrationFiles(migrations map[int]migration) error {
 	return missingScriptsErr
 }
 
-func revertState(db *sqlx.DB, appliedMigrations []migration) error {
+func revertState(db *sqlx.DB, appliedMigrations []Migration) error {
 	var rollbackErr error
 	for i := len(appliedMigrations)-1; i >= 0; i-- {
 		migration := appliedMigrations[i]

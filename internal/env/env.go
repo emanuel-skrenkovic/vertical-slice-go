@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 )
 
 var (
@@ -33,4 +34,26 @@ func GetString(key string) (string, error) {
 	}
 
 	return "", errNotFound(key)
+}
+
+func GetIntOrDefault(key string, defaultVal int) int {
+	if val, found := os.LookupEnv(key); found {
+		parsed, err := strconv.Atoi(val)
+		if err != nil {
+			return defaultVal
+		}
+
+		return parsed
+	}
+
+	return defaultVal
+}
+
+func GetInt(key string) (int, error) {
+	val, found := os.LookupEnv(key)
+	if !found {
+		return 0, errNotFound(key)
+	}
+
+	return strconv.Atoi(val)
 }
