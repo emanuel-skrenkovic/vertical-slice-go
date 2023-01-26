@@ -9,7 +9,7 @@ import (
 	"github.com/eskrenkovic/mediator-go"
 	"github.com/eskrenkovic/vertical-slice-go/internal/config"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
-	"github.com/eskrenkovic/vertical-slice-go/internal/modules/product"
+	gamesession "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session"
 
 	sqlmigration "github.com/eskrenkovic/vertical-slice-go/internal/sql-migrations"
 
@@ -55,8 +55,6 @@ func NewHTTPServer(config config.Config) (Server, error) {
 		return nil, err
 	}
 
-	productRepository := product.NewProductRepository(db)
-
 	requestLoggingBehavior := core.RequestLoggingBehavior{Logger: logger}
 	handlerErrorLoggingBehavior := core.HandlerErrorLoggingBehavior{Logger: logger}
 	requestValidationBehavior := core.RequestValidationBehavior{}
@@ -67,32 +65,29 @@ func NewHTTPServer(config config.Config) (Server, error) {
 	m.RegisterPipelineBehavior(&requestValidationBehavior)
 
 	// handler registration
-	createProductHandler := product.NewCreateProductHandler(productRepository)
-	err = mediator.RegisterRequestHandler[product.CreateProductCommand, product.CreateProductResponse](
-		m, createProductHandler,
+
+	createGameSessionHandler := gamesession.NewCreateSessionCommandHandler(db)
+	err = mediator.RegisterRequestHandler[gamesession.CreateSessionCommand, gamesession.CreateSessionResponse](
+		m,
+		createGameSessionHandler,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	getProductHandler := product.NewGetProductQueryHandler(productRepository)
-	err = mediator.RegisterRequestHandler[product.GetProductQuery, product.Product](m, getProductHandler)
-	if err != nil {
-		return nil, err
-	}
-
 	// http
-	productEndpointHandler := product.NewProductsEndpointHandler(m)
+
+	// Game sessions
+	gameSessionEndpointHandler := gamesession.NewGameSessionHTTPHandler(m)
 
 	router.Group(func(r chi.Router) {
-		router.Route("/products", func(r chi.Router) {
+		router.Route("/game-sessions", func(r chi.Router) {
 			r.Use(middleware.StripSlashes)
 			r.Use(middleware.Logger)
 			r.Use(middleware.RequestID)
 			r.Use(core.CorrelationIDHTTPMiddleware)
 
-			r.Post("/", productEndpointHandler.HandleCreateProduct)
-			r.Get("/{product_id}", productEndpointHandler.HandleGetProduct)
+			r.Post("/", gameSessionEndpointHandler.HandleCreateGameSession)
 		})
 	})
 
