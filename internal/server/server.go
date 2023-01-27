@@ -9,7 +9,12 @@ import (
 	"github.com/eskrenkovic/mediator-go"
 	"github.com/eskrenkovic/vertical-slice-go/internal/config"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
+
+
 	gamesession "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session"
+	gamesessiondomain "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/domain"
+	gamesessioncommands "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/commands"
+	gamesessionqueries "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/queries"
 
 	sqlmigration "github.com/eskrenkovic/vertical-slice-go/internal/sql-migrations"
 
@@ -60,8 +65,8 @@ func NewHTTPServer(config config.Config) (Server, error) {
 
 	// handler registration
 
-	createGameSessionHandler := gamesession.NewCreateSessionCommandHandler(db)
-	err = mediator.RegisterRequestHandler[gamesession.CreateSessionCommand, gamesession.CreateSessionResponse](
+	createGameSessionHandler := gamesessioncommands.NewCreateSessionCommandHandler(db)
+	err = mediator.RegisterRequestHandler[gamesessioncommands.CreateSessionCommand, gamesessioncommands.CreateSessionResponse](
 		m,
 		createGameSessionHandler,
 	)
@@ -69,8 +74,8 @@ func NewHTTPServer(config config.Config) (Server, error) {
 		return nil, err
 	}
 
-	getOwnedSessionsHandler := gamesession.NewGetOwnedSessionsQueryHandler(db)
-	err = mediator.RegisterRequestHandler[gamesession.GetOwnedSessionsQuery, []gamesession.Session](
+	getOwnedSessionsHandler := gamesessionqueries.NewGetOwnedSessionsQueryHandler(db)
+	err = mediator.RegisterRequestHandler[gamesessionqueries.GetOwnedSessionsQuery, []gamesessiondomain.Session](
 		m,
 		getOwnedSessionsHandler,
 	)

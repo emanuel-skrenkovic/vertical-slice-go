@@ -8,15 +8,16 @@ import (
 	"net/http"
 	"testing"
 
-	gamesession "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session"
-	"github.com/stretchr/testify/require"
+	commands "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/commands"
+	domain "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/domain"
 
+	"github.com/stretchr/testify/require"
 	"github.com/google/uuid"
 )
 
 func Test_CreateSessionCommand_Creates_New_Session_For_User(t *testing.T) {
 	// Arrange
-	createGameSessionCommand := gamesession.CreateSessionCommand{
+	createGameSessionCommand := commands.CreateSessionCommand{
 		OwnerID: uuid.New(),
 		Name:    uuid.New().String(),
 	}
@@ -42,7 +43,7 @@ func Test_CreateSessionCommand_Creates_New_Session_For_User(t *testing.T) {
 
 func Test_CreateSessionCommand_Creates_Returns_400_When_OwnerID_Invalid(t *testing.T) {
 	// Arrange
-	createGameSessionCommand := gamesession.CreateSessionCommand{
+	createGameSessionCommand := commands.CreateSessionCommand{
 		OwnerID: uuid.Nil,
 		Name:    uuid.New().String(),
 	}
@@ -68,7 +69,7 @@ func Test_CreateSessionCommand_Creates_Returns_400_When_OwnerID_Invalid(t *testi
 
 func Test_CreateSessionCommand_Creates_Returns_400_When_Name_Empty(t *testing.T) {
 	// Arrange
-	createGameSessionCommand := gamesession.CreateSessionCommand{
+	createGameSessionCommand := commands.CreateSessionCommand{
 		OwnerID: uuid.New(),
 		Name:    "",
 	}
@@ -108,7 +109,7 @@ func Test_GetOwnedSessions_Returns_Empty_List_If_No_Active_Owned_Sessions(t *tes
 	bytes, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	var response []gamesession.Session
+	var response []domain.Session
 	require.NoError(t, json.Unmarshal(bytes, &response))
 
 	require.Equal(t, 0, len(response))
@@ -122,7 +123,7 @@ func Test_GetOwnedSessions_Returns_Sessions_Owned_By_User(t *testing.T) {
 
 	for i := 0; i < count; i++ {
 		// Arrange
-		createGameSessionCommand := gamesession.CreateSessionCommand{
+		createGameSessionCommand := commands.CreateSessionCommand{
 			OwnerID: ownerID,
 			Name:    uuid.New().String(),
 		}
@@ -154,7 +155,7 @@ func Test_GetOwnedSessions_Returns_Sessions_Owned_By_User(t *testing.T) {
 	bytes, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	var response []gamesession.Session
+	var response []domain.Session
 	require.NoError(t, json.Unmarshal(bytes, &response))
 
 	require.Equal(t, count, len(response))

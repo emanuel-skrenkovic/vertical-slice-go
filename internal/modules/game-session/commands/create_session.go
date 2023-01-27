@@ -1,8 +1,10 @@
-package gamesession
+package commands
 
 import (
 	"context"
 	"fmt"
+
+	"github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/domain"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -41,7 +43,7 @@ func (h *CreateSessionCommandHandler) Handle(
 	ctx context.Context,
 	request CreateSessionCommand,
 ) (CreateSessionResponse, error) {
-	session := Session{
+	session := domain.Session{
 		ID:      uuid.New().String(),
 		OwnerID: request.OwnerID,
 	}

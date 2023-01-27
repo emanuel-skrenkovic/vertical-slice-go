@@ -1,8 +1,10 @@
-package gamesession
+package queries
 
 import (
 	"context"
 	"fmt"
+
+	"github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/domain"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -31,7 +33,7 @@ func NewGetOwnedSessionsQueryHandler(db *sqlx.DB) *GetOwnedSessionsQueryHandler 
 func (h *GetOwnedSessionsQueryHandler) Handle(
 	ctx context.Context,
 	request GetOwnedSessionsQuery,
-) ([]Session, error) {
+) ([]domain.Session, error) {
 	const query = `
 		SELECT
 			*
@@ -40,7 +42,7 @@ func (h *GetOwnedSessionsQueryHandler) Handle(
 		WHERE
 			owner_id = $1;`
 
-	sessions := make([]Session, 0)
+	sessions := make([]domain.Session, 0)
 	if err := h.db.SelectContext(ctx, &sessions, query, request.OwnerID); err != nil {
 		return nil, err
 	}

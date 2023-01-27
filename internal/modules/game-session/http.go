@@ -8,6 +8,10 @@ import (
 	"github.com/eskrenkovic/mediator-go"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
 
+	"github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/commands"
+	"github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/domain"
+	"github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/queries"
+
 	"github.com/google/uuid"
 )
 
@@ -20,13 +24,17 @@ func NewGameSessionHTTPHandler(m *mediator.Mediator) *GameSessionHTTPHandler {
 }
 
 func (h *GameSessionHTTPHandler) HandleCreateGameSession(w http.ResponseWriter, r *http.Request) {
-	command, err := core.RequestBody[CreateSessionCommand](r)
+	command, err := core.RequestBody[commands.CreateSessionCommand](r)
 	if err != nil {
 		core.WriteBadRequest(w, r, err)
 		return
 	}
 
-	response, err := mediator.Send[CreateSessionCommand, CreateSessionResponse](h.m, r.Context(), command)
+	response, err := mediator.Send[commands.CreateSessionCommand, commands.CreateSessionResponse](
+		h.m,
+		r.Context(),
+		command,
+	)
 	if err != nil {
 		// TODO: don't like this at all. Needs to be a simple function call or a decorator solution.
 		statusCode := 500
@@ -54,10 +62,10 @@ func (h *GameSessionHTTPHandler) HandleGetOwnedSessions(w http.ResponseWriter, r
 		return
 	}
 
-	response, err := mediator.Send[GetOwnedSessionsQuery, []Session](
+	response, err := mediator.Send[queries.GetOwnedSessionsQuery, []domain.Session](
 		h.m,
 		r.Context(),
-		GetOwnedSessionsQuery{OwnerID: ownerID},
+		queries.GetOwnedSessionsQuery{OwnerID: ownerID},
 	)
 	if err != nil {
 		// TODO: don't like this at all. Needs to be a simple function call or a decorator solution.
