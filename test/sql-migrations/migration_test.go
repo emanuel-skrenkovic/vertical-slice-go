@@ -14,6 +14,7 @@ import (
 	sqlmigration "github.com/eskrenkovic/vertical-slice-go/internal/sql-migrations"
 	"github.com/eskrenkovic/vertical-slice-go/internal/test"
 	"github.com/joho/godotenv"
+	"github.com/stretchr/testify/require"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -136,9 +137,7 @@ func Test_Applies_All_Migrations_In_Directory(t *testing.T) {
 	testMigrationsPath := migrationPath(t)
 	defer cleanUpTestMigrations()
 	defer func() {
-		if err := os.RemoveAll(testMigrationsPath); err != nil {
-			t.Errorf("cleanup failed to remove directory: %s", testMigrationsPath)
-		}
+		require.NoError(t, os.RemoveAll(testMigrationsPath))
 	}()
 
 	createMigrationFile(t, "main_table", mainTableUpMigration, mainTableDownMigration)
@@ -148,16 +147,12 @@ func Test_Applies_All_Migrations_In_Directory(t *testing.T) {
 	err := sqlmigration.Run(testMigrationsPath, conf.DatabaseURL)
 
 	// Assert
-	if err != nil {
-		t.Errorf("unexpected error: %s", err)
-	}
+	require.NoError(t, err)
 
 	m := getMigrations(t, db)
 
 	expectedMigrationsFound := 2
-	if len(m) != expectedMigrationsFound {
-		t.Errorf("expected '%d' migrations found '%d'", expectedMigrationsFound, len(m))
-	}
+	require.Equal(t, expectedMigrationsFound, len(m))
 }
 
 func Test_Applied_Migrations_From_Directory_After_Already_Applied_Version(t *testing.T) {
@@ -165,34 +160,26 @@ func Test_Applied_Migrations_From_Directory_After_Already_Applied_Version(t *tes
 	testMigrationsPath := migrationPath(t)
 	defer cleanUpTestMigrations()
 	defer func() {
-		if err := os.RemoveAll(testMigrationsPath); err != nil {
-			t.Errorf("cleanup failed to remove directory: %s", testMigrationsPath)
-		}
+		require.NoError(t, os.RemoveAll(testMigrationsPath))
 	}()
 
 	createMigrationFile(t, "main_table", mainTableUpMigration, mainTableDownMigration)
 	createMigrationFile(t, "dependant_table", depdendantTableUpMigration, depdendantTableDownMigration)
 
 	err := sqlmigration.Run(testMigrationsPath, conf.DatabaseURL)
-	if err != nil {
-		t.Errorf("unexpected error: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Act
 	createMigrationFile(t, "main_table2", mainTable2UpMigration, mainTable2DownMigration)
 	err = sqlmigration.Run(testMigrationsPath, conf.DatabaseURL)
 
 	// Assert
-	if err != nil {
-		t.Errorf("unexpected error: %s", err)
-	}
+	require.NoError(t, err)
 
 	m := getMigrations(t, db)
 
 	expectedMigrationsFound := 3
-	if len(m) != expectedMigrationsFound {
-		t.Errorf("expected '%d' migrations found '%d'", expectedMigrationsFound, len(m))
-	}
+	require.Equal(t, expectedMigrationsFound, len(m))
 }
 
 func Test_Reverts_All_Attempted_Migrations_On_Failed_Migration_Attempt(t *testing.T) {
@@ -200,9 +187,7 @@ func Test_Reverts_All_Attempted_Migrations_On_Failed_Migration_Attempt(t *testin
 	testMigrationsPath := migrationPath(t)
 	defer cleanUpTestMigrations()
 	defer func() {
-		if err := os.RemoveAll(testMigrationsPath); err != nil {
-			t.Errorf("cleanup failed to remove directory: %s", testMigrationsPath)
-		}
+		require.NoError(t, os.RemoveAll(testMigrationsPath))
 	}()
 
 	createMigrationFile(t, "main_table", mainTableUpMigration, mainTableDownMigration)
@@ -213,16 +198,12 @@ func Test_Reverts_All_Attempted_Migrations_On_Failed_Migration_Attempt(t *testin
 	err := sqlmigration.Run(testMigrationsPath, conf.DatabaseURL)
 
 	// Assert
-	if err == nil {
-		t.Error("did not receive expected error")
-	}
+	require.Error(t, err)
 
 	m := getMigrations(t, db)
 
 	expectedMigrationsFound := 0
-	if len(m) != expectedMigrationsFound {
-		t.Errorf("expected '%d' migrations found '%d'", expectedMigrationsFound, len(m))
-	}
+	require.Equal(t, expectedMigrationsFound, len(m))
 }
 
 func Test_Reverts_All_Attempted_Migrations_On_Failed_Migration_Attempt_Leaving_Previous_Migrations(t *testing.T) {
@@ -230,33 +211,26 @@ func Test_Reverts_All_Attempted_Migrations_On_Failed_Migration_Attempt_Leaving_P
 	testMigrationsPath := migrationPath(t)
 	defer cleanUpTestMigrations()
 	defer func() {
-		if err := os.RemoveAll(testMigrationsPath); err != nil {
-			t.Errorf("cleanup failed to remove directory: %s", testMigrationsPath)
-		}
+		require.NoError(t, os.RemoveAll(testMigrationsPath))
 	}()
 
 	createMigrationFile(t, "main_table", mainTableUpMigration, mainTableDownMigration)
-	if err := sqlmigration.Run(testMigrationsPath, conf.DatabaseURL); err != nil {
-		t.Errorf("received unexpected error: %v", err)
-	}
+	err := sqlmigration.Run(testMigrationsPath, conf.DatabaseURL)
+	require.NoError(t, err)
 
 	// Act
 	createMigrationFile(t, "dependant_table", depdendantTableUpMigration, depdendantTableDownMigration)
 	createMigrationFile(t, "main_table2", "invalid", "SELECT 1;")
-	err := sqlmigration.Run(testMigrationsPath, conf.DatabaseURL)
+	err = sqlmigration.Run(testMigrationsPath, conf.DatabaseURL)
 
 	// Assert
-	if err == nil {
-		t.Error("did not receive expected error")
-	}
+	require.Error(t, err)
 
 	createMigrationFile(t, "dependant_table", depdendantTableUpMigration, depdendantTableDownMigration)
 	m := getMigrations(t, db)
 
 	expectedMigrationsFound := 1
-	if len(m) != expectedMigrationsFound {
-		t.Errorf("expected '%d' migrations found '%d'", expectedMigrationsFound, len(m))
-	}
+	require.Equal(t, expectedMigrationsFound, len(m))
 }
 
 func cleanUpTestMigrations() {
@@ -274,40 +248,32 @@ func createMigrationFile(t *testing.T, name, upScript, downScript string) {
 	upScriptName := strings.Join([]string{fmt.Sprintf("%d", version), name, "up", "sql"}, ".")
 	downScriptName := strings.Join([]string{fmt.Sprintf("%d", version), name, "down", "sql"}, ".")
 
-	if err := os.WriteFile(path.Join(testMigrationsPath, upScriptName), []byte(upScript), 0777); err != nil {
-		t.Errorf("unexpected error occurred: %v", err)
-	}
+	err := os.WriteFile(path.Join(testMigrationsPath, upScriptName), []byte(upScript), 0777)
+	require.NoError(t, err)
 
-	if err := os.WriteFile(path.Join(testMigrationsPath, downScriptName), []byte(downScript), 0777); err != nil {
-		t.Errorf("unexpected error occurred: %v", err)
-	}
+	err = os.WriteFile(path.Join(testMigrationsPath, downScriptName), []byte(downScript), 0777)
+	require.NoError(t, err)
 }
 
 func getMigrationVersion(t *testing.T) int {
 	testMigrationsPath := migrationPath(t)
 
 	entities, err := os.ReadDir(testMigrationsPath)
-	if err != nil {
-		t.Errorf("received unexpected err: %v", err)
-	}
+	require.NoError(t, err)
 
 	highestVersion := 0
-	for _, entry := range entities {
+ 	for _, entry := range entities {
 		if entry.IsDir() {
 			continue
 		}
 
 		parts := strings.Split(entry.Name(), ".")
-		if len(parts) != 4 {
-			t.Errorf("found unexpected file in test migrations folder %s %s", testMigrationsPath, entry.Name())
-		}
+		require.Equal(t, 4, len(parts))
 
 		versionPart := parts[0]
 
 		version, err := strconv.Atoi(versionPart)
-		if err != nil {
-			t.Errorf("received unexpected error: %v", err)
-		}
+		require.NoError(t, err)
 
 		if version > highestVersion {
 			highestVersion = version
@@ -319,9 +285,8 @@ func getMigrationVersion(t *testing.T) int {
 
 func getMigrations(t *testing.T, db *sqlx.DB) []sqlmigration.Migration {
 	var m []sqlmigration.Migration
-	if err := db.Select(&m, "SELECT * FROM schema_migration;"); err != nil {
-		t.Errorf("unexpected error: %s", err)
-	}
+	err := db.Select(&m, "SELECT * FROM schema_migration;")
+	require.NoError(t, err)
 
 	return m
 }
