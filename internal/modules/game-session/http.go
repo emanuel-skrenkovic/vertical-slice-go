@@ -7,6 +7,7 @@ import (
 
 	"github.com/eskrenkovic/mediator-go"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
+
 	"github.com/google/uuid"
 )
 
@@ -58,6 +59,15 @@ func (h *GameSessionHTTPHandler) HandleGetOwnedSessions(w http.ResponseWriter, r
 		r.Context(),
 		GetOwnedSessionsQuery{OwnerID: ownerID},
 	)
+	if err != nil {
+		// TODO: don't like this at all. Needs to be a simple function call or a decorator solution.
+		statusCode := 500
+		if commandErr, ok := err.(core.CommandError); ok {
+			statusCode = commandErr.StatusCode
+		}
+		core.WriteResponse(w, r, statusCode, err)
+		return
+	}
 
 	core.WriteOK(w, r, response)
 }

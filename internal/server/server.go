@@ -17,7 +17,6 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"go.uber.org/zap"
 )
 
 type Server interface {
@@ -33,11 +32,6 @@ type HTTPServer struct {
 }
 
 func NewHTTPServer(config config.Config) (Server, error) {
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		return nil, err
-	}
-
 	baseCtx := context.Background()
 
 	router := chi.NewRouter()
@@ -55,8 +49,8 @@ func NewHTTPServer(config config.Config) (Server, error) {
 		return nil, err
 	}
 
-	requestLoggingBehavior := core.RequestLoggingBehavior{Logger: logger}
-	handlerErrorLoggingBehavior := core.HandlerErrorLoggingBehavior{Logger: logger}
+	requestLoggingBehavior := core.RequestLoggingBehavior{Logger: config.Logger}
+	handlerErrorLoggingBehavior := core.HandlerErrorLoggingBehavior{Logger: config.Logger}
 	requestValidationBehavior := core.RequestValidationBehavior{}
 
 	m := mediator.NewMediator()
@@ -75,6 +69,15 @@ func NewHTTPServer(config config.Config) (Server, error) {
 		return nil, err
 	}
 
+	getOwnedSessionsHandler := gamesession.NewGetOwnedSessionsQueryHandler(db)
+	err = mediator.RegisterRequestHandler[gamesession.GetOwnedSessionsQuery, []gamesession.Session](
+		m,
+		getOwnedSessionsHandler,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	// http
 
 	// Game sessions
@@ -87,6 +90,7 @@ func NewHTTPServer(config config.Config) (Server, error) {
 			r.Use(middleware.RequestID)
 			r.Use(core.CorrelationIDHTTPMiddleware)
 
+			r.Get("/", gameSessionEndpointHandler.HandleGetOwnedSessions)
 			r.Post("/", gameSessionEndpointHandler.HandleCreateGameSession)
 		})
 	})

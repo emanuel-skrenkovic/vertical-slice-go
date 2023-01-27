@@ -13,6 +13,7 @@ import (
 	"github.com/eskrenkovic/vertical-slice-go/internal/config"
 	"github.com/eskrenkovic/vertical-slice-go/internal/server"
 	"github.com/eskrenkovic/vertical-slice-go/internal/test"
+	"go.uber.org/zap"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
@@ -62,6 +63,9 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// Replace logger with nop to avoid excess clutter during test runs.
+	config.Logger = zap.NewNop()
 
 	fixture, err := test.NewLocalTestFixture(path.Join(rootPath, "docker-compose.yml"), config.DatabaseURL)
 	if err != nil {
