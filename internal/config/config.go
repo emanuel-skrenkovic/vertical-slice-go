@@ -4,6 +4,7 @@ import (
 	"path"
 
 	"github.com/eskrenkovic/vertical-slice-go/internal/env"
+	"go.uber.org/zap"
 )
 
 const (
@@ -13,12 +14,19 @@ const (
 )
 
 type Config struct {
+	Logger *zap.Logger
+
 	Port           int
 	DatabaseURL    string
 	MigrationsPath string
 }
 
 func Load() (Config, error) {
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		return Config{}, err
+	}
+
 	port, err := env.GetInt(PortEnv)
 	if err != nil {
 		return Config{}, err
@@ -37,6 +45,7 @@ func Load() (Config, error) {
 	migrationsPath := path.Join(rootPath, "db", "migrations")
 
 	return Config{
+		Logger:         logger,
 		Port:           port,
 		DatabaseURL:    dbURL,
 		MigrationsPath: migrationsPath,
