@@ -58,8 +58,8 @@ func WriteResponse(
 	for _, opt := range opts {
 		opt(w, r)
 	}
-	writeBodyIfPresent(w, body)
 	w.WriteHeader(statusCode)
+	writeBodyIfPresent(w, body)
 }
 
 func writeBodyIfPresent(w http.ResponseWriter, body interface{}) {
@@ -67,9 +67,17 @@ func writeBodyIfPresent(w http.ResponseWriter, body interface{}) {
 		return
 	}
 
+	// Handle special case where the body is error
+	// as error marshals into an empty object.
+	if err, ok := body.(error); ok {
+		w.Write([]byte(err.Error()))
+		return
+	}
+
 	responseBytes, err := json.Marshal(body)
 	if err != nil {
-		// TODO
+		w.Write([]byte(err.Error()))
+		return
 	}
 
 	w.Write(responseBytes)

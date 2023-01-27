@@ -9,7 +9,7 @@ import (
 	"github.com/eskrenkovic/mediator-go"
 	"github.com/eskrenkovic/vertical-slice-go/internal/config"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
-	"github.com/eskrenkovic/vertical-slice-go/internal/modules/product"
+	gamesession "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session"
 
 	sqlmigration "github.com/eskrenkovic/vertical-slice-go/internal/sql-migrations"
 
@@ -17,7 +17,6 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"go.uber.org/zap"
 )
 
 type Server interface {
@@ -33,11 +32,6 @@ type HTTPServer struct {
 }
 
 func NewHTTPServer(config config.Config) (Server, error) {
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		return nil, err
-	}
-
 	baseCtx := context.Background()
 
 	router := chi.NewRouter()
@@ -55,10 +49,8 @@ func NewHTTPServer(config config.Config) (Server, error) {
 		return nil, err
 	}
 
-	productRepository := product.NewProductRepository(db)
-
-	requestLoggingBehavior := core.RequestLoggingBehavior{Logger: logger}
-	handlerErrorLoggingBehavior := core.HandlerErrorLoggingBehavior{Logger: logger}
+	requestLoggingBehavior := core.RequestLoggingBehavior{Logger: config.Logger}
+	handlerErrorLoggingBehavior := core.HandlerErrorLoggingBehavior{Logger: config.Logger}
 	requestValidationBehavior := core.RequestValidationBehavior{}
 
 	m := mediator.NewMediator()
@@ -67,32 +59,39 @@ func NewHTTPServer(config config.Config) (Server, error) {
 	m.RegisterPipelineBehavior(&requestValidationBehavior)
 
 	// handler registration
-	createProductHandler := product.NewCreateProductHandler(productRepository)
-	err = mediator.RegisterRequestHandler[product.CreateProductCommand, product.CreateProductResponse](
-		m, createProductHandler,
+
+	createGameSessionHandler := gamesession.NewCreateSessionCommandHandler(db)
+	err = mediator.RegisterRequestHandler[gamesession.CreateSessionCommand, gamesession.CreateSessionResponse](
+		m,
+		createGameSessionHandler,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	getProductHandler := product.NewGetProductQueryHandler(productRepository)
-	err = mediator.RegisterRequestHandler[product.GetProductQuery, product.Product](m, getProductHandler)
+	getOwnedSessionsHandler := gamesession.NewGetOwnedSessionsQueryHandler(db)
+	err = mediator.RegisterRequestHandler[gamesession.GetOwnedSessionsQuery, []gamesession.Session](
+		m,
+		getOwnedSessionsHandler,
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	// http
-	productEndpointHandler := product.NewProductsEndpointHandler(m)
+
+	// Game sessions
+	gameSessionEndpointHandler := gamesession.NewGameSessionHTTPHandler(m)
 
 	router.Group(func(r chi.Router) {
-		router.Route("/products", func(r chi.Router) {
+		router.Route("/game-sessions", func(r chi.Router) {
 			r.Use(middleware.StripSlashes)
 			r.Use(middleware.Logger)
 			r.Use(middleware.RequestID)
 			r.Use(core.CorrelationIDHTTPMiddleware)
 
-			r.Post("/", productEndpointHandler.HandleCreateProduct)
-			r.Get("/{product_id}", productEndpointHandler.HandleGetProduct)
+			r.Get("/", gameSessionEndpointHandler.HandleGetOwnedSessions)
+			r.Post("/", gameSessionEndpointHandler.HandleCreateGameSession)
 		})
 	})
 
