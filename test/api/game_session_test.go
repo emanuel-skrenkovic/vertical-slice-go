@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	gamesession "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session"
+	"github.com/stretchr/testify/require"
 
 	"github.com/google/uuid"
 )
@@ -30,20 +31,65 @@ func Test_CreateSessionCommand_Creates_New_Session_For_User(t *testing.T) {
 	)
 
 	// Assert
-	if err != nil {
-		t.Errorf("unexpected error occurred: %s", err.Error())
-	}
-
+	require.NoError(t, err)
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusCreated {
-		t.Errorf("expected status code: %d received: %d", http.StatusCreated, resp.StatusCode)
-	}
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
 
 	location := resp.Header.Get("Location")
-	if location == "" {
-		t.Errorf("empty 'Location' header")
+	require.NotEmpty(t, location)
+}
+
+func Test_CreateSessionCommand_Creates_Returns_400_When_OwnerID_Invalid(t *testing.T) {
+	// Arrange
+	createGameSessionCommand := gamesession.CreateSessionCommand{
+		OwnerID: uuid.Nil,
+		Name:    uuid.New().String(),
 	}
+
+	payload, err := json.Marshal(createGameSessionCommand)
+
+	// Act
+	resp, err := fixture.client.Post(
+		fmt.Sprintf("%s%s", fixture.baseURL, "/game-sessions"),
+		"application/json",
+		bytes.NewReader(payload),
+	)
+
+	// Assert
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+
+	location := resp.Header.Get("Location")
+	require.Empty(t, location)
+}
+
+func Test_CreateSessionCommand_Creates_Returns_400_When_Name_Empty(t *testing.T) {
+	// Arrange
+	createGameSessionCommand := gamesession.CreateSessionCommand{
+		OwnerID: uuid.New(),
+		Name:    "",
+	}
+
+	payload, err := json.Marshal(createGameSessionCommand)
+
+	// Act
+	resp, err := fixture.client.Post(
+		fmt.Sprintf("%s%s", fixture.baseURL, "/game-sessions"),
+		"application/json",
+		bytes.NewReader(payload),
+	)
+
+	// Assert
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+
+	location := resp.Header.Get("Location")
+	require.Empty(t, location)
 }
 
 func Test_GetOwnedSessions_Returns_Empty_List_If_No_Active_Owned_Sessions(t *testing.T) {
@@ -53,27 +99,63 @@ func Test_GetOwnedSessions_Returns_Empty_List_If_No_Active_Owned_Sessions(t *tes
 	)
 
 	// Assert
-	if err != nil {
-		t.Errorf("unexpected error occurred: %s", err.Error())
-	}
+	require.NoError(t, err)
 
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("expected status code: %d received: %d", http.StatusCreated, resp.StatusCode)
-	}
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 
 	bytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Errorf("unexpected error occurred: %s", err.Error())
-	}
+	require.NoError(t, err)
 
 	var response []gamesession.Session
-	if err := json.Unmarshal(bytes, &response); err != nil {
-		t.Errorf("unexpected error occurred: %s", err.Error())
+	require.NoError(t, json.Unmarshal(bytes, &response))
+
+	require.Equal(t, 0, len(response))
+}
+
+func Test_GetOwnedSessions_Returns_Sessions_Owned_By_User(t *testing.T) {
+	// Arrange
+
+	count := 5
+	ownerID := uuid.New()
+
+	for i := 0; i < count; i++ {
+		// Arrange
+		createGameSessionCommand := gamesession.CreateSessionCommand{
+			OwnerID: ownerID,
+			Name:    uuid.New().String(),
+		}
+
+		payload, err := json.Marshal(createGameSessionCommand)
+		require.NoError(t, err)
+
+		// Act
+		_, err = fixture.client.Post(
+			fmt.Sprintf("%s%s", fixture.baseURL, "/game-sessions"),
+			"application/json",
+			bytes.NewReader(payload),
+		)
+		require.NoError(t, err)
 	}
 
-	if len(response) != 0 {
-		t.Errorf("expected length: %d found: %d", 0, len(response))
-	}
+	// Act
+	resp, err := fixture.client.Get(
+		fmt.Sprintf("%s%s?ownerId=%s", fixture.baseURL, "/game-sessions", ownerID.String()),
+	)
+
+	// Assert
+	require.NoError(t, err)
+
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	bytes, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	var response []gamesession.Session
+	require.NoError(t, json.Unmarshal(bytes, &response))
+
+	require.Equal(t, count, len(response))
 }

@@ -15,7 +15,11 @@ type CreateSessionCommand struct {
 
 func (c CreateSessionCommand) Validate() error {
 	if c.OwnerID == uuid.Nil {
-		return fmt.Errorf("invalid OwnerID - %s", c.OwnerID.String())
+		return fmt.Errorf("invalid OwnerID - '%s'", c.OwnerID.String())
+	}
+
+	if c.Name == "" {
+		return fmt.Errorf("invalid Name - '%s'", c.Name)
 	}
 
 	return nil
