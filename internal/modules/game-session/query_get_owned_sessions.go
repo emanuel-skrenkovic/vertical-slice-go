@@ -40,7 +40,7 @@ func (h *GetOwnedSessionsQueryHandler) Handle(
 		WHERE
 			owner_id = $1;`
 
-	var sessions []Session
+	sessions := make([]Session, 0)
 	if err := h.db.SelectContext(ctx, &sessions, query, request.OwnerID); err != nil {
 		return nil, err
 	}
