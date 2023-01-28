@@ -74,6 +74,15 @@ func NewHTTPServer(config config.Config) (Server, error) {
 		return nil, err
 	}
 
+	closeSessionHandler := gamesessioncommands.NewCloseSessionCommandHandler(db)
+	err = mediator.RegisterRequestHandler[gamesessioncommands.CloseSessionCommand, core.Unit](
+		m,
+		closeSessionHandler,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	getOwnedSessionsHandler := gamesessionqueries.NewGetOwnedSessionsQueryHandler(db)
 	err = mediator.RegisterRequestHandler[gamesessionqueries.GetOwnedSessionsQuery, []gamesessiondomain.Session](
 		m,
@@ -97,6 +106,7 @@ func NewHTTPServer(config config.Config) (Server, error) {
 
 			r.Get("/", gameSessionEndpointHandler.HandleGetOwnedSessions)
 			r.Post("/", gameSessionEndpointHandler.HandleCreateGameSession)
+			r.Put("/{id}/actions/close", gameSessionEndpointHandler.HandleCloseSession)
 		})
 	})
 

@@ -13,7 +13,7 @@ type Session struct {
 }
 
 // Create session +
-// See your open sessions
+// See your open sessions +
 // See sessions you are invited to
 // Join session
 // Close session (if you created it)
