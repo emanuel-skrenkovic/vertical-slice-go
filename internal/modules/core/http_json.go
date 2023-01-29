@@ -48,6 +48,14 @@ func WriteBadGateway(w http.ResponseWriter, r *http.Request, body interface{}) {
 	WriteResponse(w, r, 502, body)
 }
 
+func WriteCommandError(w http.ResponseWriter, r *http.Request, err error, opts ...ResponseOption) {
+	statusCode := 500
+	if commandErr, ok := err.(CommandError); ok {
+		statusCode = commandErr.StatusCode
+	}
+	WriteResponse(w, r, statusCode, err)
+}
+
 func WriteResponse(
 	w http.ResponseWriter,
 	r *http.Request,
