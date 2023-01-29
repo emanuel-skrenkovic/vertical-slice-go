@@ -1,6 +1,10 @@
 package domain
 
-import "github.com/google/uuid"
+import (
+	"fmt"
+
+	"github.com/google/uuid"
+)
 
 type User struct {
 	ID                        uuid.UUID `db:"id"`
@@ -32,4 +36,24 @@ func RegisterUser(
 		Email:         email,
 		PasswordHash:  passwordHash,
 	}, nil
+}
+
+func (u *User) Authenticate(password string, passwordHasher PasswordHasher) error {
+	err := passwordHasher.Verify(u.PasswordHash, password)
+	if err == nil {
+		u.UnsuccessfulLoginAttempts = 0
+		return nil
+	}
+
+	reason := err.Error()
+
+	u.UnsuccessfulLoginAttempts++
+
+	if u.UnsuccessfulLoginAttempts >= 3 {
+		u.Locked = true
+		u.SecurityStamp = uuid.New()
+		reason = "account locked"
+	}
+
+	return fmt.Errorf("authentication failed: %s", reason)
 }

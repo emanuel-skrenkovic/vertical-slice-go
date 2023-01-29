@@ -37,6 +37,10 @@ type RegisterCommandHandler struct {
 	passwordHasher domain.PasswordHasher
 }
 
+func NewRegisterCommandHandler(db *sqlx.DB, passwordHasher domain.PasswordHasher) *RegisterCommandHandler {
+	return &RegisterCommandHandler{db, passwordHasher}
+}
+
 func (h *RegisterCommandHandler) Handle(ctx context.Context, request RegisterCommand) (core.Unit, error) {
 	var count int
 	const existingUserQuery = `

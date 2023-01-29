@@ -29,6 +29,10 @@ type VerifyRegistrationCommandHandler struct {
 	db *sqlx.DB
 }
 
+func NewVerifyRegistrationCommandHandler(db *sqlx.DB) *VerifyRegistrationCommandHandler {
+	return &VerifyRegistrationCommandHandler{db}
+}
+
 func (h *VerifyRegistrationCommandHandler) Handle(
 	ctx context.Context,
 	request VerifyRegistrationCommand,
