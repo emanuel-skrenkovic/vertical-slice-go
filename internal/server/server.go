@@ -16,6 +16,11 @@ import (
 	gamesessioncommands "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/commands"
 	gamesessionqueries "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/queries"
 
+	auth "github.com/eskrenkovic/vertical-slice-go/internal/modules/auth"
+	authdomain "github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/domain"
+	authcommands "github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/commands"
+
+
 	sqlmigration "github.com/eskrenkovic/vertical-slice-go/internal/sql-migrations"
 
 	"github.com/go-chi/chi"
@@ -65,6 +70,8 @@ func NewHTTPServer(config config.Config) (Server, error) {
 
 	// handler registration
 
+	// game-session
+
 	createGameSessionHandler := gamesessioncommands.NewCreateSessionCommandHandler(db)
 	err = mediator.RegisterRequestHandler[gamesessioncommands.CreateSessionCommand, gamesessioncommands.CreateSessionResponse](
 		m,
@@ -92,10 +99,44 @@ func NewHTTPServer(config config.Config) (Server, error) {
 		return nil, err
 	}
 
+	// auth
+	passwordHasher := authdomain.NewSHA256PasswordHasher()
+
+	loginHandler := authcommands.NewLoginCommandHandler(db, passwordHasher)
+	err = mediator.RegisterRequestHandler[authcommands.LoginCommand, core.Unit](
+		m,
+		loginHandler,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+
+	registerHandler := authcommands.NewRegisterCommandHandler(db, passwordHasher)
+	err = mediator.RegisterRequestHandler[authcommands.RegisterCommand, core.Unit](
+		m,
+		registerHandler,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	verifyRegistrationCommandHandler := authcommands.NewVerifyRegistrationCommandHandler(db)
+	err = mediator.RegisterRequestHandler[authcommands.VerifyRegistrationCommand, core.Unit](
+		m,
+		verifyRegistrationCommandHandler,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	// http
 
 	// Game sessions
 	gameSessionEndpointHandler := gamesession.NewGameSessionHTTPHandler(m)
+
+	// auth
+	authEndpointHandler := auth.NewAuthHTTPHandler(m)
 
 	router.Group(func(r chi.Router) {
 		router.Route("/game-sessions", func(r chi.Router) {
@@ -107,6 +148,18 @@ func NewHTTPServer(config config.Config) (Server, error) {
 			r.Get("/", gameSessionEndpointHandler.HandleGetOwnedSessions)
 			r.Post("/", gameSessionEndpointHandler.HandleCreateGameSession)
 			r.Put("/{id}/actions/close", gameSessionEndpointHandler.HandleCloseSession)
+		})
+
+		router.Route("/auth", func(r chi.Router) {
+			r.Use(middleware.StripSlashes)
+			r.Use(middleware.Logger)
+			r.Use(middleware.RequestID)
+			r.Use(core.CorrelationIDHTTPMiddleware)
+
+			r.Post("/login", authEndpointHandler.HandleLogin)
+			r.Post("/logout", authEndpointHandler.HandleLogout)
+			r.Post("/registration", authEndpointHandler.HandleRegistration)
+			r.Post("/registration/actions/confirm", authEndpointHandler.HandleVerifyRegistration)
 		})
 	})
 
