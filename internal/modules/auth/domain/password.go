@@ -46,7 +46,10 @@ func (h *SHA256PasswordHasher) HashPassword(password string) (string, error) {
 
 	passwordBytes := []byte(password)
 
-	hashedBytes := h.hashPassword(salt, passwordBytes)
+	hashedBytes, err := h.hashPassword(salt, passwordBytes)
+	if err != nil {
+		return "", err
+	}
 
 	base64Hash := base64.StdEncoding.EncodeToString(hashedBytes)
 	base64Salt := base64.StdEncoding.EncodeToString(salt)
@@ -61,7 +64,10 @@ func (h *SHA256PasswordHasher) Verify(passwordHash, givenPassword string) error 
 		return err
 	}
 
-	givenPasswordHash := h.hashPassword(salt, []byte(givenPassword))
+	givenPasswordHash, err := h.hashPassword(salt, []byte(givenPassword))
+	if err != nil {
+		return err
+	}
 
 	if !bytes.Equal(givenPasswordHash, []byte(passwordHash)) {
 		return ErrInvalidPassword
@@ -70,12 +76,16 @@ func (h *SHA256PasswordHasher) Verify(passwordHash, givenPassword string) error 
 	return nil
 }
 
-func (h *SHA256PasswordHasher) hashPassword(salt, password []byte) []byte {
+func (h *SHA256PasswordHasher) hashPassword(salt, password []byte) ([]byte, error) {
 	inputLen := SaltBytes + len(password)
 
 	inputBytes := make([]byte, 0, inputLen)
 	inputBytes = append(inputBytes, salt...)
 	inputBytes = append(inputBytes, password...)
 
-	return h.hasher.Sum(inputBytes)
+	if _, err := h.hasher.Write(inputBytes); err != nil {
+		return nil, err
+	}
+
+	return h.hasher.Sum(nil), nil
 }

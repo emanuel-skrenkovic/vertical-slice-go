@@ -4,48 +4,62 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"hash"
 	"time"
 
 	"github.com/google/uuid"
 )
 
-type ConfirmationToken struct {
-	UserID        uuid.UUID
-	SecurityStamp uuid.UUID
-	ExpirationUTC time.Time
+type ActivationCode struct {
+	ID            int64      `db:"id"`
+	UserID        uuid.UUID  `db:"user_id"`
+	SecurityStamp uuid.UUID  `db:"security_stamp"`
+	ExpiresAt     time.Time  `db:"expires_at"`
+	SentAt        *time.Time `db:"sent_at"`
+	Token         string     `db:"token"`
+	// Is this needed if we have sent_at?
+	Used bool `db:"used"`
 }
 
-func CreateRegistrationConfirmationToken(user User, expiration time.Duration) (string, error) {
-	token := ConfirmationToken{
+func CreateRegistrationActivationCode(user User, expiration time.Duration, h hash.Hash) (ActivationCode, error) {
+	code := ActivationCode{
 		UserID:        user.ID,
 		SecurityStamp: user.SecurityStamp,
-		ExpirationUTC: time.Now().UTC().Add(expiration),
+		ExpiresAt:     time.Now().UTC().Add(expiration),
 	}
 
-	serialized, err := json.Marshal(&token)
+	serialized, err := json.Marshal(code)
 	if err != nil {
-		return "", err
+		return ActivationCode{}, err
 	}
 
-	return base64.StdEncoding.EncodeToString(serialized), nil
+	securityBytes, err := user.SecurityStamp.MarshalBinary()
+	if err != nil {
+		return ActivationCode{}, err
+	}
+
+	inputLen := len(securityBytes) + len(serialized)
+
+	inputBytes := make([]byte, 0, inputLen)
+	inputBytes = append(inputBytes, securityBytes...)
+	inputBytes = append(inputBytes, serialized...)
+
+	if _, err := h.Write(inputBytes); err != nil {
+		return ActivationCode{}, err
+	}
+
+	hashed := h.Sum(nil)
+	code.Token = base64.StdEncoding.EncodeToString(hashed)
+
+	return code, nil
 }
 
-func ParseConfirmationToken(token string) (ConfirmationToken, error) {
-	tokenBytes, err := base64.StdEncoding.DecodeString(token)
-	if err != nil {
-		return ConfirmationToken{}, err
-	}
-
-	var parsedToken ConfirmationToken
-	return parsedToken, json.Unmarshal(tokenBytes, &parsedToken)
-}
-
-func ValidateUserConfirmationToken(token ConfirmationToken, user User) error {
-	if token.ExpirationUTC.After(time.Now().UTC()) {
+func ValidateUserActivationCode(code ActivationCode, user User) error {
+	if code.ExpiresAt.After(time.Now().UTC()) {
 		return fmt.Errorf("confirmation token expired")
 	}
 
-	if token.SecurityStamp != user.SecurityStamp {
+	if code.SecurityStamp != user.SecurityStamp {
 		return fmt.Errorf("token security stamp does not match the user security stamp")
 	}
 

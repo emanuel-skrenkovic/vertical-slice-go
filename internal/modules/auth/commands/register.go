@@ -2,7 +2,9 @@ package commands
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
+	"time"
 
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/domain"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
@@ -33,7 +35,7 @@ func (c RegisterCommand) Validate() error {
 }
 
 type RegisterCommandHandler struct {
-	db *sqlx.DB
+	db             *sqlx.DB
 	passwordHasher domain.PasswordHasher
 }
 
@@ -49,7 +51,7 @@ func (h *RegisterCommandHandler) Handle(ctx context.Context, request RegisterCom
 		FROM
 			auth.user
 		WHERE
-			username = %1 OR email = $2;`
+			username = $1 OR email = $2;`
 
 	if err := h.db.GetContext(ctx, &count, existingUserQuery, request.Username, request.Email); err != nil {
 		return core.Unit{}, core.NewCommandError(500, err, "failed to reach database")
@@ -66,13 +68,33 @@ func (h *RegisterCommandHandler) Handle(ctx context.Context, request RegisterCom
 		return core.Unit{}, core.NewCommandError(400, err, "user registration failed")
 	}
 
-	const stmt = `
-		INSERT INTO
-			auth.user (id, security_stamp, username, email, password_hash)
-		VALUES
-			(:id, :security_stamp, :username, :email, :password_hash);`
+	activationCode, err := domain.CreateRegistrationActivationCode(user, 7*24*time.Hour, sha256.New())
+	if err != nil {
+		return core.Unit{}, core.NewCommandError(500, err, "failed to create new user entry")
+	}
 
-	if _, err := h.db.NamedExecContext(ctx, stmt, user); err != nil {
+	err = core.Tx(ctx, h.db, func(ctx context.Context, tx *sqlx.Tx) error {
+		const stmt = `
+			INSERT INTO
+				auth.user (id, security_stamp, username, email, password_hash)
+			VALUES
+				(:id, :security_stamp, :username, :email, :password_hash);`
+
+		if _, err := h.db.NamedExecContext(ctx, stmt, user); err != nil {
+			return err
+		}
+
+		const activationCodeStmt = `
+			INSERT INTO
+				auth.activation_code (user_id, security_stamp, expires_at, sent_at, token, used)
+			VALUES
+				(:user_id, :security_stamp, :expires_at, :sent_at, :token, :used);`
+
+		_, err := h.db.NamedExecContext(ctx, activationCodeStmt, activationCode)
+		return err
+	})
+
+	if err != nil {
 		return core.Unit{}, core.NewCommandError(500, err, "failed to create new user entry")
 	}
 

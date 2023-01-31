@@ -52,11 +52,11 @@ func (h *LoginCommandHandler) Handle(ctx context.Context, request LoginCommand) 
 		return core.Unit{}, core.NewCommandError(500, err, "failed to get user")
 	}
 
-	err := user.Authenticate(request.Password, h.passwordHasher)
-	if err == nil {
-		return core.Unit{}, nil
-	}
+	authErr := user.Authenticate(request.Password, h.passwordHasher)
 
+	// Regardless of the auth result, save the user.
+	// In case it logged in successfully, the unsuccessful attempts count
+	// needs to be reset to 0.
 	const updateStmt = `
 		UPDATE
 			auth.user
@@ -71,5 +71,10 @@ func (h *LoginCommandHandler) Handle(ctx context.Context, request LoginCommand) 
 		return core.Unit{}, core.NewCommandError(500, err, "failed to authenticate user")
 	}
 
-	return core.Unit{}, core.NewCommandError(400, err, "failed to authenticate user")
+	var errResult error
+	if authErr != nil {
+		errResult = core.NewCommandError(400, authErr, "failed to authenticate user")
+	}
+
+	return core.Unit{}, errResult
 }

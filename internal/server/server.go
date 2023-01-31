@@ -10,16 +10,14 @@ import (
 	"github.com/eskrenkovic/vertical-slice-go/internal/config"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
 
-
 	gamesession "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session"
-	gamesessiondomain "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/domain"
 	gamesessioncommands "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/commands"
+	gamesessiondomain "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/domain"
 	gamesessionqueries "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/queries"
 
 	auth "github.com/eskrenkovic/vertical-slice-go/internal/modules/auth"
-	authdomain "github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/domain"
 	authcommands "github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/commands"
-
+	authdomain "github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/domain"
 
 	sqlmigration "github.com/eskrenkovic/vertical-slice-go/internal/sql-migrations"
 
@@ -111,7 +109,6 @@ func NewHTTPServer(config config.Config) (Server, error) {
 		return nil, err
 	}
 
-
 	registerHandler := authcommands.NewRegisterCommandHandler(db, passwordHasher)
 	err = mediator.RegisterRequestHandler[authcommands.RegisterCommand, core.Unit](
 		m,
@@ -158,8 +155,8 @@ func NewHTTPServer(config config.Config) (Server, error) {
 
 			r.Post("/login", authEndpointHandler.HandleLogin)
 			r.Post("/logout", authEndpointHandler.HandleLogout)
-			r.Post("/registration", authEndpointHandler.HandleRegistration)
-			r.Post("/registration/actions/confirm", authEndpointHandler.HandleVerifyRegistration)
+			r.Post("/registrations", authEndpointHandler.HandleRegistration)
+			r.Post("/registrations/actions/confirm", authEndpointHandler.HandleVerifyRegistration)
 		})
 	})
 
