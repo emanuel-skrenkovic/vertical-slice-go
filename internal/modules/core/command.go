@@ -10,12 +10,25 @@ type CommandError struct {
 	Reason     *string
 }
 
-func NewCommandError(statusCode int, payload interface{}, reason string) CommandError {
-	return CommandError{
+type CommandErrorOption func(*CommandError)
+
+func WithReason(reason string) CommandErrorOption {
+	return func(e *CommandError) {
+		e.Reason = &reason
+	}
+}
+
+func NewCommandError(statusCode int, payload interface{}, opts ...CommandErrorOption) CommandError {
+	e := CommandError{
 		StatusCode: statusCode,
 		Payload:    payload,
-		Reason:     &reason,
 	}
+
+	for _, opt := range opts {
+		opt(&e)
+	}
+
+	return e
 }
 
 func (r CommandError) Error() string {

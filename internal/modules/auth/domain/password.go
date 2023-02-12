@@ -3,7 +3,6 @@ package domain
 import (
 	"bytes"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 	"hash"
@@ -16,29 +15,19 @@ const (
 	separator = ":"
 )
 
-var (
-	_ PasswordHasher = (*SHA256PasswordHasher)(nil)
+var ErrInvalidPassword error = fmt.Errorf("given password does not match")
 
-	ErrInvalidPassword error = fmt.Errorf("given password does not match")
-)
+type HashFactory func() hash.Hash
 
-// TODO: remove interface. The hash.Hash interface serves the intended purpose of having
-// plug-inable hash algorithms.
-// TODO: think about saving the hash algorithm alongside password. Is that secure?
-type PasswordHasher interface {
-	HashPassword(password string) (string, error)
-	Verify(passwordHash, givenPassword string) error
+type PasswordHasher struct{
+	createHash HashFactory
 }
 
-type SHA256PasswordHasher struct {
-	hasher hash.Hash
+func NewSHA256PasswordHasher(hashFactory HashFactory) *PasswordHasher {
+	return &PasswordHasher{createHash: hashFactory}
 }
 
-func NewSHA256PasswordHasher() *SHA256PasswordHasher {
-	return &SHA256PasswordHasher{hasher: sha256.New()}
-}
-
-func (h *SHA256PasswordHasher) HashPassword(password string) (string, error) {
+func (h *PasswordHasher) HashPassword(password string) (string, error) {
 	salt := make([]byte, SaltBytes, SaltBytes)
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
@@ -46,7 +35,7 @@ func (h *SHA256PasswordHasher) HashPassword(password string) (string, error) {
 
 	passwordBytes := []byte(password)
 
-	hashedBytes, err := h.hashPassword(salt, passwordBytes)
+	hashedBytes, err := hashPassword(h.createHash(), salt, passwordBytes)
 	if err != nil {
 		return "", err
 	}
@@ -57,35 +46,41 @@ func (h *SHA256PasswordHasher) HashPassword(password string) (string, error) {
 	return fmt.Sprintf("%s%s%s", base64Salt, separator, base64Hash), nil
 }
 
-func (h *SHA256PasswordHasher) Verify(passwordHash, givenPassword string) error {
-	saltPart := strings.Split(passwordHash, separator)[0]
-	salt, err := base64.StdEncoding.DecodeString(saltPart)
+func (h *PasswordHasher) Verify(passwordHash, givenPassword string) error {
+	parts := strings.Split(passwordHash, separator)
+
+	salt, err := base64.StdEncoding.DecodeString(parts[0])
 	if err != nil {
 		return err
 	}
 
-	givenPasswordHash, err := h.hashPassword(salt, []byte(givenPassword))
+	givenPasswordHash, err := hashPassword(h.createHash(), salt, []byte(givenPassword))
 	if err != nil {
 		return err
 	}
 
-	if !bytes.Equal(givenPasswordHash, []byte(passwordHash)) {
+	password, err := base64.StdEncoding.DecodeString(parts[1])
+	if err != nil {
+		return err
+	}
+
+	if !bytes.Equal(givenPasswordHash, password) {
 		return ErrInvalidPassword
 	}
 
 	return nil
 }
 
-func (h *SHA256PasswordHasher) hashPassword(salt, password []byte) ([]byte, error) {
+func hashPassword(h hash.Hash, salt, password []byte) ([]byte, error) {
 	inputLen := SaltBytes + len(password)
 
 	inputBytes := make([]byte, 0, inputLen)
 	inputBytes = append(inputBytes, salt...)
 	inputBytes = append(inputBytes, password...)
 
-	if _, err := h.hasher.Write(inputBytes); err != nil {
+	if _, err := h.Write(inputBytes); err != nil {
 		return nil, err
 	}
 
-	return h.hasher.Sum(nil), nil
+	return h.Sum(nil), nil
 }

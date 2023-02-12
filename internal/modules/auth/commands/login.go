@@ -49,7 +49,7 @@ func (h *LoginCommandHandler) Handle(ctx context.Context, request LoginCommand) 
 
 	if err := h.db.GetContext(ctx, &user, stmt, request.Email); err != nil {
 		// TODO: handle not found
-		return core.Unit{}, core.NewCommandError(500, err, "failed to get user")
+		return core.Unit{}, core.NewCommandError(500, err)
 	}
 
 	authErr := user.Authenticate(request.Password, h.passwordHasher)
@@ -68,12 +68,12 @@ func (h *LoginCommandHandler) Handle(ctx context.Context, request LoginCommand) 
 			email = :email;` // TODO: old security stamp
 
 	if _, err := h.db.NamedExecContext(ctx, updateStmt, user); err != nil {
-		return core.Unit{}, core.NewCommandError(500, err, "failed to authenticate user")
+		return core.Unit{}, core.NewCommandError(500, err, core.WithReason("failed to authenticate user"))
 	}
 
 	var errResult error
 	if authErr != nil {
-		errResult = core.NewCommandError(400, authErr, "failed to authenticate user")
+		errResult = core.NewCommandError(400, authErr, core.WithReason("failed to authenticate user"))
 	}
 
 	return core.Unit{}, errResult

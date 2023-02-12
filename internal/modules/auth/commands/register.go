@@ -54,7 +54,7 @@ func (h *RegisterCommandHandler) Handle(ctx context.Context, request RegisterCom
 			username = $1 OR email = $2;`
 
 	if err := h.db.GetContext(ctx, &count, existingUserQuery, request.Username, request.Email); err != nil {
-		return core.Unit{}, core.NewCommandError(500, err, "failed to reach database")
+		return core.Unit{}, core.NewCommandError(500, err)
 	}
 
 	if count > 0 {
@@ -65,12 +65,13 @@ func (h *RegisterCommandHandler) Handle(ctx context.Context, request RegisterCom
 
 	user, err := domain.RegisterUser(request.Username, request.Email, request.Password, h.passwordHasher)
 	if err != nil {
-		return core.Unit{}, core.NewCommandError(400, err, "user registration failed")
+		return core.Unit{}, core.NewCommandError(400, err)
 	}
 
+	// TODO: pull duration from configuration
 	activationCode, err := domain.CreateRegistrationActivationCode(user, 7*24*time.Hour, sha256.New())
 	if err != nil {
-		return core.Unit{}, core.NewCommandError(500, err, "failed to create new user entry")
+		return core.Unit{}, core.NewCommandError(500, err)
 	}
 
 	err = core.Tx(ctx, h.db, func(ctx context.Context, tx *sqlx.Tx) error {
@@ -80,7 +81,7 @@ func (h *RegisterCommandHandler) Handle(ctx context.Context, request RegisterCom
 			VALUES
 				(:id, :security_stamp, :username, :email, :password_hash);`
 
-		if _, err := h.db.NamedExecContext(ctx, stmt, user); err != nil {
+		if _, err := tx.NamedExecContext(ctx, stmt, user); err != nil {
 			return err
 		}
 
@@ -90,12 +91,12 @@ func (h *RegisterCommandHandler) Handle(ctx context.Context, request RegisterCom
 			VALUES
 				(:user_id, :security_stamp, :expires_at, :sent_at, :token, :used);`
 
-		_, err := h.db.NamedExecContext(ctx, activationCodeStmt, activationCode)
+		_, err := tx.NamedExecContext(ctx, activationCodeStmt, activationCode)
 		return err
 	})
 
 	if err != nil {
-		return core.Unit{}, core.NewCommandError(500, err, "failed to create new user entry")
+		return core.Unit{}, core.NewCommandError(500, err)
 	}
 
 	return core.Unit{}, nil

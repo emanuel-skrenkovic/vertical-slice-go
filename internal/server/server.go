@@ -2,9 +2,12 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
 	"log"
 	"net"
 	"net/http"
+	"net/smtp"
+	"strings"
 
 	"github.com/eskrenkovic/mediator-go"
 	"github.com/eskrenkovic/vertical-slice-go/internal/config"
@@ -16,6 +19,7 @@ import (
 	gamesessionqueries "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/queries"
 
 	auth "github.com/eskrenkovic/vertical-slice-go/internal/modules/auth"
+	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/commands"
 	authcommands "github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/commands"
 	authdomain "github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/domain"
 
@@ -98,9 +102,17 @@ func NewHTTPServer(config config.Config) (Server, error) {
 	}
 
 	// auth
-	passwordHasher := authdomain.NewSHA256PasswordHasher()
+	authHost := config.Email.Host.Host
+	parts := strings.Split(authHost, ":")
+	if len(parts) > 1 {
+		authHost = parts[0]
+	}
 
-	loginHandler := authcommands.NewLoginCommandHandler(db, passwordHasher)
+	smtpServerAuth := smtp.PlainAuth("", config.Email.Username, config.Email.Password, authHost)
+	emailClient := core.NewEmailClient(config.Email.Host, smtpServerAuth)
+	passwordHasher := authdomain.NewSHA256PasswordHasher(sha256.New)
+
+	loginHandler := authcommands.NewLoginCommandHandler(db, *passwordHasher)
 	err = mediator.RegisterRequestHandler[authcommands.LoginCommand, core.Unit](
 		m,
 		loginHandler,
@@ -109,7 +121,7 @@ func NewHTTPServer(config config.Config) (Server, error) {
 		return nil, err
 	}
 
-	registerHandler := authcommands.NewRegisterCommandHandler(db, passwordHasher)
+	registerHandler := authcommands.NewRegisterCommandHandler(db, *passwordHasher)
 	err = mediator.RegisterRequestHandler[authcommands.RegisterCommand, core.Unit](
 		m,
 		registerHandler,
@@ -126,6 +138,26 @@ func NewHTTPServer(config config.Config) (Server, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	processActivationCodesCommandHandler := authcommands.NewProcessActivationCodesCommandHandler(
+		db,
+		emailClient,
+		commands.EmailConfiguration{Sender: config.Email.Sender},
+	)
+	err = mediator.RegisterRequestHandler[authcommands.ProcessActivationCodesCommand, core.Unit](
+		m,
+		processActivationCodesCommandHandler,
+	)
+
+	reSendActivationEmailCommandHandler := authcommands.NewReSendActivationEmailCommandHandler(
+		db,
+		emailClient,
+		config.Email.Sender,
+	)
+	err = mediator.RegisterRequestHandler[authcommands.ReSendActivationEmailCommand, core.Unit](
+		m,
+		reSendActivationEmailCommandHandler,
+	)
 
 	// http
 
@@ -157,6 +189,8 @@ func NewHTTPServer(config config.Config) (Server, error) {
 			r.Post("/logout", authEndpointHandler.HandleLogout)
 			r.Post("/registrations", authEndpointHandler.HandleRegistration)
 			r.Post("/registrations/actions/confirm", authEndpointHandler.HandleVerifyRegistration)
+			r.Post("/registrations/actions/publish-confirmation-emails", authEndpointHandler.HandlePublishConfirmationEmails)
+			r.Post("/registrations/actions/send-activation-code", authEndpointHandler.HandleReSendConnfirmationEmail)
 		})
 	})
 

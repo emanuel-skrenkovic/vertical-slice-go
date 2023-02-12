@@ -1,6 +1,7 @@
 package config
 
 import (
+	"net/url"
 	"path"
 
 	"github.com/eskrenkovic/vertical-slice-go/internal/env"
@@ -11,7 +12,19 @@ const (
 	PortEnv        = "PORT"
 	DatabaseUrlEnv = "DATABASE_URL"
 	RootPathEnv    = "ROOT_PATH"
+
+	EmailServerHostEnv     = "EMAIL_SERVER_HOST"
+	EmailServerUsernameEnv = "EMAIL_SERVER_USERNAME"
+	EmailServerPasswordEnv = "EMAIL_SERVER_PASSWORD"
+	EmailServerSenderEnv   = "EMAIL_SERVER_SENDER"
 )
+
+type EmailConfiguration struct {
+	Host     *url.URL
+	Username string
+	Password string
+	Sender   string
+}
 
 type Config struct {
 	Logger *zap.Logger
@@ -19,6 +32,8 @@ type Config struct {
 	Port           int
 	DatabaseURL    string
 	MigrationsPath string
+
+	Email EmailConfiguration
 }
 
 func Load() (Config, error) {
@@ -44,10 +59,36 @@ func Load() (Config, error) {
 
 	migrationsPath := path.Join(rootPath, "db", "migrations")
 
+	emailServerURL, err := env.GetURL(EmailServerHostEnv)
+	if err != nil {
+		return Config{}, err
+	}
+
+	emailServerUsername, err := env.GetString(EmailServerUsernameEnv)
+	if err != nil {
+		return Config{}, err
+	}
+
+	emailServerPassword, err := env.GetString(EmailServerPasswordEnv)
+	if err != nil {
+		return Config{}, err
+	}
+
+	emailServerSender, err := env.GetString(EmailServerSenderEnv)
+	if err != nil {
+		return Config{}, err
+	}
+
 	return Config{
 		Logger:         logger,
 		Port:           port,
 		DatabaseURL:    dbURL,
 		MigrationsPath: migrationsPath,
+		Email: EmailConfiguration{
+			Host:     emailServerURL,
+			Username: emailServerUsername,
+			Password: emailServerPassword,
+			Sender:   emailServerSender,
+		},
 	}, nil
 }

@@ -7,6 +7,7 @@ import (
 	"hash"
 	"time"
 
+	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
 	"github.com/google/uuid"
 )
 
@@ -55,7 +56,7 @@ func CreateRegistrationActivationCode(user User, expiration time.Duration, h has
 }
 
 func ValidateUserActivationCode(code ActivationCode, user User) error {
-	if code.ExpiresAt.After(time.Now().UTC()) {
+	if time.Now().UTC().After(code.ExpiresAt) {
 		return fmt.Errorf("confirmation token expired")
 	}
 
@@ -66,4 +67,14 @@ func ValidateUserActivationCode(code ActivationCode, user User) error {
 	// TODO: what about user id?
 
 	return nil
+}
+
+func RegistrationActivationEmail(user User, sender string) core.MailMessage {
+	return core.MailMessage{
+		Subject:    "Chess account verification",
+		From:       sender,
+		To:         []string{user.Email},
+		IsHTML:     true,
+		BodyString: "This is an email verification mail",
+	}
 }

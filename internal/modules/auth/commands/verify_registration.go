@@ -14,7 +14,7 @@ import (
 )
 
 type VerifyRegistrationCommand struct {
-	Token string
+	Token string `json:"token"`
 }
 
 func (c VerifyRegistrationCommand) Validate() error {
@@ -49,7 +49,7 @@ func (h *VerifyRegistrationCommandHandler) Handle(
 
 	var activationCode domain.ActivationCode
 	if err := h.db.GetContext(ctx, &activationCode, getCodeQuery, request.Token); err != nil {
-		return core.Unit{}, core.NewCommandError(400, fmt.Errorf("invalid activation code"), "")
+		return core.Unit{}, core.NewCommandError(400, fmt.Errorf("invalid activation code"))
 	}
 
 	const stmt = `
@@ -63,18 +63,19 @@ func (h *VerifyRegistrationCommandHandler) Handle(
 	var user domain.User
 	if err := h.db.GetContext(ctx, &user, stmt, activationCode.UserID, activationCode.SecurityStamp); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return core.Unit{}, core.NewCommandError(500, err, invalidTokenMessage)
+			return core.Unit{}, core.NewCommandError(500, err, core.WithReason(invalidTokenMessage))
 		}
 
-		return core.Unit{}, core.NewCommandError(500, err, "failed to get user from database")
+		return core.Unit{}, core.NewCommandError(500, err)
 	}
 
 	if err := domain.ValidateUserActivationCode(activationCode, user); err != nil {
 		// TODO: should the security stamp be updated if the confirmation fails?
-		return core.Unit{}, core.NewCommandError(500, err, invalidTokenMessage)
+		return core.Unit{}, core.NewCommandError(500, err, core.WithReason(invalidTokenMessage))
 	}
 
 	updateParams := map[string]interface{}{
+		"user_id":            user.ID,
 		"old_security_stamp": activationCode.SecurityStamp,
 		"new_security_stamp": uuid.New(),
 	}
@@ -89,8 +90,9 @@ func (h *VerifyRegistrationCommandHandler) Handle(
 			WHERE
 				id = :user_id AND security_stamp = :old_security_stamp;`
 
-		if _, err := h.db.ExecContext(ctx, updateUserStmt, updateParams); err != nil {
-			return core.NewCommandError(500, err, "failed to store confirmed user")
+		_, err := tx.NamedExecContext(ctx, updateUserStmt, updateParams)
+		if err != nil {
+			return err
 		}
 
 		const updateActivationCodeStmt = `
@@ -101,12 +103,16 @@ func (h *VerifyRegistrationCommandHandler) Handle(
 			WHERE
 				token = $1;`
 
-		if _, err := h.db.ExecContext(ctx, updateActivationCodeStmt, activationCode.Token); err != nil {
-			return core.NewCommandError(500, err, "failed to update activation code")
+		if _, err := tx.ExecContext(ctx, updateActivationCodeStmt, activationCode.Token); err != nil {
+			return err
 		}
 
 		return nil
 	})
 
-	return core.Unit{}, err
+	if err != nil {
+		return core.Unit{}, core.NewCommandError(500, err)
+	}
+
+	return core.Unit{}, nil
 }

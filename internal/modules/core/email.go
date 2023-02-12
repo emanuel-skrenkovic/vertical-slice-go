@@ -44,22 +44,12 @@ type EmailClient struct {
 	auth smtp.Auth
 }
 
+// TODO: pass in smtp.Auth directly instead of username/password.
 func NewEmailClient(
 	host *url.URL,
-	username string,
-	password string,
-) (*EmailClient, error) {
-	authHost := host.Host
-
-	parts := strings.Split(host.Host, ":")
-	if len(parts) > 1 {
-		authHost = parts[0]
-	}
-
-	return &EmailClient{
-		auth: smtp.PlainAuth("", username, password, authHost),
-		host: host.Host,
-	}, nil
+	auth smtp.Auth,
+) *EmailClient {
+	return &EmailClient{auth: auth, host: host.Host,}
 }
 
 func (c *EmailClient) Send(m MailMessage) error {

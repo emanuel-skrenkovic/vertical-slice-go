@@ -53,5 +53,14 @@ func Tx(
 		return err
 	}
 
+	err = tx.Commit()
+	if err != nil {
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return errors.Wrapf(err, "%w", rollbackErr)
+		}
+
+		return err
+	}
+
 	return err
 }

@@ -34,7 +34,7 @@ func (b *RequestValidationBehavior) Handle(
 ) (interface{}, error) {
 	if request, ok := request.(Validator); ok {
 		if err := request.Validate(); err != nil {
-			return nil, NewCommandError(400, err, "request validation failed")
+			return nil, NewCommandError(400, err, WithReason("request validation failed"))
 		}
 	}
 

@@ -3,6 +3,7 @@ package env
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 )
@@ -56,4 +57,18 @@ func GetInt(key string) (int, error) {
 	}
 
 	return strconv.Atoi(val)
+}
+
+func GetURL(key string) (*url.URL, error) {
+	val, found := os.LookupEnv(key)
+	if !found {
+		return nil, errNotFound(key)
+	}
+
+	u, err := url.Parse(val)
+	if err != nil {
+		return nil, err
+	}
+
+	return u, nil
 }

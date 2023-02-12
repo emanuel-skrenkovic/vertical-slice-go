@@ -49,9 +49,56 @@ func (h *AuthHTTPHandler) HandleVerifyRegistration(w http.ResponseWriter, r *htt
 }
 
 func (h *AuthHTTPHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
+	// TODO: session cookie
+	command, err := core.RequestBody[commands.LoginCommand](r)
+	if err != nil {
+		core.WriteBadRequest(w, r, err)
+		return
+	}
+
+	_, err = mediator.Send[commands.LoginCommand, core.Unit](h.m, r.Context(), command)
+	if err != nil {
+		core.WriteCommandError(w, r, err)
+		return
+	}
+
+	sessionCookie := http.Cookie{
+		Name:  "chess-session",
+		Value: "HI MOM",
+	}
+
+	http.SetCookie(w, &sessionCookie)
 	core.WriteOK(w, r, nil)
 }
 
 func (h *AuthHTTPHandler) HandleLogout(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{MaxAge: -1})
+	core.WriteOK(w, r, nil)
+}
+
+func (h *AuthHTTPHandler) HandlePublishConfirmationEmails(w http.ResponseWriter, r *http.Request) {
+	command := commands.ProcessActivationCodesCommand{}
+	_, err := mediator.Send[commands.ProcessActivationCodesCommand, core.Unit](h.m, r.Context(), command)
+	if err != nil {
+		core.WriteCommandError(w, r, err)
+		return
+	}
+
+	core.WriteOK(w, r, nil)
+}
+
+func (h *AuthHTTPHandler) HandleReSendConnfirmationEmail(w http.ResponseWriter, r *http.Request) {
+	command, err := core.RequestBody[commands.ReSendActivationEmailCommand](r)
+	if err != nil {
+		core.WriteBadRequest(w, r, err)
+		return
+	}
+
+	_, err = mediator.Send[commands.ReSendActivationEmailCommand, core.Unit](h.m, r.Context(), command)
+	if err != nil {
+		core.WriteCommandError(w, r, err)
+		return
+	}
+
 	core.WriteOK(w, r, nil)
 }

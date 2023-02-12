@@ -45,9 +45,9 @@ func (h *CloseSessionCommandHandler) Handle(ctx context.Context, request CloseSe
 	_, err := h.db.ExecContext(ctx, stmt, request.SessionID, request.UserID)
 	switch {
 	case err != nil && errors.Is(err, sql.ErrNoRows):
-		return core.Unit{}, core.NewCommandError(404, err, fmt.Sprintf("no game session with id %s found", request.SessionID))
+		return core.Unit{}, core.NewCommandError(404, err)
 	case err != nil:
-		return core.Unit{}, core.NewCommandError(500, err, "failed to execute db statement")
+		return core.Unit{}, core.NewCommandError(500, err)
 	}
 
 	return core.Unit{}, nil
