@@ -76,7 +76,7 @@ func (h ReSendActivationEmailCommandHandler) Handle(
 
 		const activationCodeStmt = `
 			INSERT INTO
-					auth.activation_code (user_id, security_stamp, expires_at, sent_at, token, used)
+				auth.activation_code (user_id, security_stamp, expires_at, sent_at, token, used)
 			VALUES
 				(:user_id, :security_stamp, :expires_at, :sent_at, :token, :used);`
 

@@ -58,7 +58,6 @@ func (h *ProcessActivationCodesCommandHandler) Handle(
 	}
 
 	// https://security.stackexchange.com/questions/197004/what-should-a-verification-email-consist-of
-
 	userIDs := core.Map(codes, func(c domain.ActivationCode) uuid.UUID {
 		return c.UserID
 	})

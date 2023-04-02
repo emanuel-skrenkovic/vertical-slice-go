@@ -18,7 +18,7 @@ import (
 	gamesessiondomain "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/domain"
 	gamesessionqueries "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/queries"
 
-	auth "github.com/eskrenkovic/vertical-slice-go/internal/modules/auth"
+	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/commands"
 	authcommands "github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/commands"
 	authdomain "github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/domain"
@@ -38,7 +38,7 @@ type Server interface {
 
 var _ Server = &HTTPServer{}
 
-// Acts as the composition root for an application.
+// HTTPServer acts as the composition root for an application.
 type HTTPServer struct {
 	server *http.Server
 }
@@ -170,7 +170,6 @@ func NewHTTPServer(config config.Config) (Server, error) {
 	router.Group(func(r chi.Router) {
 		router.Route("/game-sessions", func(r chi.Router) {
 			r.Use(middleware.StripSlashes)
-			r.Use(middleware.Logger)
 			r.Use(middleware.RequestID)
 			r.Use(core.CorrelationIDHTTPMiddleware)
 
@@ -181,7 +180,6 @@ func NewHTTPServer(config config.Config) (Server, error) {
 
 		router.Route("/auth", func(r chi.Router) {
 			r.Use(middleware.StripSlashes)
-			r.Use(middleware.Logger)
 			r.Use(middleware.RequestID)
 			r.Use(core.CorrelationIDHTTPMiddleware)
 
