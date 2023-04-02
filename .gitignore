@@ -18,3 +18,5 @@ main
 
 pkg/sql-migrations/test
 config.local.env
+.DS_Store
+*.old
