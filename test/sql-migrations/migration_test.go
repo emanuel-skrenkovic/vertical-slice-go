@@ -74,7 +74,9 @@ func TestMain(m *testing.M) {
 		log.Fatal("root path is required")
 	}
 	rootPath = args[len(args)-1]
-	os.Setenv(config.RootPathEnv, rootPath)
+	if err := os.Setenv(config.RootPathEnv, rootPath); err != nil {
+		log.Fatal(err)
+	}
 
 	localConfigPath := path.Join(rootPath, "config.local.env")
 	if _, err := os.Stat(localConfigPath); err != nil {
@@ -83,7 +85,11 @@ func TestMain(m *testing.M) {
 			if err != nil {
 				log.Fatal(err)
 			}
-			defer f.Close()
+			defer func() {
+				if err := f.Close(); err != nil {
+					log.Fatal(err)
+				}
+			}()
 
 			if _, err := f.Write([]byte("SKIP_INFRASTRUCTURE=false")); err != nil {
 				log.Fatal(err)
@@ -99,7 +105,27 @@ func TestMain(m *testing.M) {
 		log.Fatal(err)
 	}
 
-	var err error
+	_, err := os.Stat(testDir)
+	switch {
+	case err != nil && errors.Is(err, os.ErrNotExist):
+		if err := os.Mkdir(testDir, 0700); err != nil {
+			log.Fatal(err)
+		}
+	case err != nil:
+		log.Fatal(err)
+	}
+
+	testsTempPath := path.Join(rootPath, "test", "sql-migrations", "temp")
+	_, err = os.Stat(testsTempPath)
+	switch {
+	case err != nil && errors.Is(err, os.ErrNotExist):
+		if err := os.Mkdir(testsTempPath, 0700); err != nil {
+			log.Fatal(err)
+		}
+	case err != nil:
+		log.Fatal(err)
+	}
+
 	conf, err = config.Load()
 	if err != nil {
 		log.Fatal(err)
@@ -124,6 +150,8 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	cleanUpTestMigrations()
 
 	_ = m.Run()
 
@@ -179,6 +207,7 @@ func Test_Applied_Migrations_From_Directory_After_Already_Applied_Version(t *tes
 	m := getMigrations(t, db)
 
 	expectedMigrationsFound := 3
+
 	require.Equal(t, expectedMigrationsFound, len(m))
 }
 
@@ -240,7 +269,7 @@ func cleanUpTestMigrations() {
 func createMigrationFile(t *testing.T, name, upScript, downScript string) {
 	testMigrationsPath := migrationPath(t)
 	if _, err := os.Stat(testMigrationsPath); err != nil && errors.Is(err, os.ErrNotExist) {
-		os.Mkdir(testMigrationsPath, 0755)
+		require.NoError(t, os.Mkdir(testMigrationsPath, 0700))
 	}
 
 	version := getMigrationVersion(t)
@@ -248,10 +277,10 @@ func createMigrationFile(t *testing.T, name, upScript, downScript string) {
 	upScriptName := strings.Join([]string{fmt.Sprintf("%d", version), name, "up", "sql"}, ".")
 	downScriptName := strings.Join([]string{fmt.Sprintf("%d", version), name, "down", "sql"}, ".")
 
-	err := os.WriteFile(path.Join(testMigrationsPath, upScriptName), []byte(upScript), 0777)
+	err := os.WriteFile(path.Join(testMigrationsPath, upScriptName), []byte(upScript), 0700)
 	require.NoError(t, err)
 
-	err = os.WriteFile(path.Join(testMigrationsPath, downScriptName), []byte(downScript), 0777)
+	err = os.WriteFile(path.Join(testMigrationsPath, downScriptName), []byte(downScript), 0700)
 	require.NoError(t, err)
 }
 
@@ -262,7 +291,7 @@ func getMigrationVersion(t *testing.T) int {
 	require.NoError(t, err)
 
 	highestVersion := 0
- 	for _, entry := range entities {
+	for _, entry := range entities {
 		if entry.IsDir() {
 			continue
 		}

@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"go.uber.org/zap"
 	"log"
 	"net/http"
 	"net/url"
@@ -33,7 +34,9 @@ func TestMain(m *testing.M) {
 		log.Fatal("root path is required")
 	}
 	rootPath := args[len(args)-1]
-	os.Setenv(config.RootPathEnv, rootPath)
+	if err := os.Setenv(config.RootPathEnv, rootPath); err != nil {
+		log.Fatal(err)
+	}
 
 	localConfigPath := path.Join(rootPath, "config.local.env")
 	if _, err := os.Stat(localConfigPath); err != nil {
@@ -42,7 +45,11 @@ func TestMain(m *testing.M) {
 			if err != nil {
 				log.Fatal(err)
 			}
-			defer f.Close()
+			defer func() {
+				if err := f.Close(); err != nil {
+					log.Fatal(err)
+				}
+			}()
 
 			if _, err := f.Write([]byte("SKIP_INFRASTRUCTURE=false")); err != nil {
 				log.Fatal(err)
@@ -58,12 +65,14 @@ func TestMain(m *testing.M) {
 		log.Fatal(err)
 	}
 
-	config, err := config.Load()
+	conf, err := config.Load()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fixture, err := test.NewLocalTestFixture(path.Join(rootPath, "docker-compose.yml"), config.DatabaseURL)
+	conf.Logger = zap.NewNop()
+
+	fixture, err := test.NewLocalTestFixture(path.Join(rootPath, "docker-compose.yml"), conf.DatabaseURL)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -78,17 +87,17 @@ func TestMain(m *testing.M) {
 		}
 	}()
 
-	if err := initFixture(config); err != nil {
+	if err := initFixture(conf); err != nil {
 		log.Fatal(err)
 	}
 
-	server, err := server.NewHTTPServer(config)
+	srv, err := server.NewHTTPServer(conf)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	go func() {
-		if err := server.Start(); err != nil {
+		if err := srv.Start(); err != nil {
 			log.Fatal(err)
 		}
 	}()
@@ -99,11 +108,11 @@ func TestMain(m *testing.M) {
 func initFixture(config config.Config) error {
 	fixture.client = &http.Client{}
 
-	url := url.URL{
+	u := url.URL{
 		Scheme: "http",
 		Host:   fmt.Sprintf("%s:%d", "localhost", config.Port),
 	}
-	fixture.baseURL = url.String()
+	fixture.baseURL = u.String()
 
 	db, err := sqlx.Connect("postgres", config.DatabaseURL)
 	if err != nil {

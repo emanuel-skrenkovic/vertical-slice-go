@@ -1,3 +1,4 @@
+DROP SCHEMA IF EXISTS auth CASCADE;
 CREATE SCHEMA auth;
 CREATE TABLE auth.user (
     id uuid PRIMARY KEY,

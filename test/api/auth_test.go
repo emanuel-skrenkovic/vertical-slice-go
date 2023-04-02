@@ -261,7 +261,6 @@ func Test_SendActivationCode_Creates_New_ActivationCode(t *testing.T) {
 	err = fixture.db.Get(&userID, "SELECT id FROM auth.user WHERE email = $1;", registerUserCommand.Email)
 	require.NoError(t, err)
 
-
 	// Act
 	reSendConfirmationCommand := commands.ReSendActivationEmailCommand{UserID: userID}
 	payload, err = json.Marshal(reSendConfirmationCommand)
@@ -330,21 +329,18 @@ func Test_VerifyRegistration_Returns_Error_When_ActivationCode_Is_Invalid(t *tes
 	)
 	require.NoError(t, err)
 
-	verifyRegistrationCommand := commands.VerifyRegistrationCommand{Token: token}
-
-	payload, err = json.Marshal(verifyRegistrationCommand)
-	require.NoError(t, err)
+	fakeToken := uuid.New()
 
 	// Act
 	resp, err = fixture.client.Post(
-		fmt.Sprintf("%s%s?token=%s", fixture.baseURL, "/auth/registrations/actions/confirm", token),
+		fmt.Sprintf("%s%s?token=%s", fixture.baseURL, "/auth/registrations/actions/confirm", fakeToken),
 		"application/json",
 		bytes.NewReader(payload),
 	)
 
 	// Assert
 	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
 	var confirmed bool
 	err = fixture.db.Get(
@@ -353,7 +349,7 @@ func Test_VerifyRegistration_Returns_Error_When_ActivationCode_Is_Invalid(t *tes
 		registerUserCommand.Email,
 	)
 	require.NoError(t, err)
-	require.True(t, confirmed)
+	require.False(t, confirmed)
 
 	var activationCodeUsed bool
 	err = fixture.db.Get(
@@ -362,7 +358,7 @@ func Test_VerifyRegistration_Returns_Error_When_ActivationCode_Is_Invalid(t *tes
 		token,
 	)
 	require.NoError(t, err)
-	require.True(t, activationCodeUsed)
+	require.False(t, activationCodeUsed)
 }
 
 func Test_Login_With_Valid_Password_Succeeds(t *testing.T) {
@@ -410,7 +406,7 @@ func Test_Login_With_Valid_Password_Succeeds(t *testing.T) {
 
 	// Act
 	loginCommand := commands.LoginCommand{
-		Email: registerUserCommand.Email,
+		Email:    registerUserCommand.Email,
 		Password: registerUserCommand.Password,
 	}
 
