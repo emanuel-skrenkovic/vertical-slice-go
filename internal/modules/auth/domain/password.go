@@ -15,20 +15,20 @@ const (
 	separator = ":"
 )
 
-var ErrInvalidPassword error = fmt.Errorf("given password does not match")
+var ErrInvalidPassword = fmt.Errorf("given password does not match")
 
 type HashFactory func() hash.Hash
 
-type PasswordHasher struct{
+type PasswordHasher struct {
 	createHash HashFactory
 }
 
-func NewSHA256PasswordHasher(hashFactory HashFactory) *PasswordHasher {
+func NewPasswordHasher(hashFactory HashFactory) *PasswordHasher {
 	return &PasswordHasher{createHash: hashFactory}
 }
 
 func (h *PasswordHasher) HashPassword(password string) (string, error) {
-	salt := make([]byte, SaltBytes, SaltBytes)
+	salt := make([]byte, SaltBytes)
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
 	}
@@ -40,8 +40,9 @@ func (h *PasswordHasher) HashPassword(password string) (string, error) {
 		return "", err
 	}
 
-	base64Hash := base64.StdEncoding.EncodeToString(hashedBytes)
-	base64Salt := base64.StdEncoding.EncodeToString(salt)
+	enc := base64.StdEncoding
+	base64Hash := enc.EncodeToString(hashedBytes)
+	base64Salt := enc.EncodeToString(salt)
 
 	return fmt.Sprintf("%s%s%s", base64Salt, separator, base64Hash), nil
 }

@@ -11,8 +11,8 @@ import (
 	commands "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/commands"
 	domain "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/domain"
 
-	"github.com/stretchr/testify/require"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_CreateSessionCommand_Creates_New_Session_For_User(t *testing.T) {
@@ -23,6 +23,7 @@ func Test_CreateSessionCommand_Creates_New_Session_For_User(t *testing.T) {
 	}
 
 	payload, err := json.Marshal(createGameSessionCommand)
+	require.NoError(t, err)
 
 	// Act
 	resp, err := fixture.client.Post(
@@ -49,6 +50,7 @@ func Test_CreateSessionCommand_Creates_Returns_400_When_OwnerID_Invalid(t *testi
 	}
 
 	payload, err := json.Marshal(createGameSessionCommand)
+	require.NoError(t, err)
 
 	// Act
 	resp, err := fixture.client.Post(
@@ -75,6 +77,7 @@ func Test_CreateSessionCommand_Creates_Returns_400_When_Name_Empty(t *testing.T)
 	}
 
 	payload, err := json.Marshal(createGameSessionCommand)
+	require.NoError(t, err)
 
 	// Act
 	resp, err := fixture.client.Post(

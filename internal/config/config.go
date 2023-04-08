@@ -42,42 +42,17 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 
-	port, err := env.GetInt(PortEnv)
-	if err != nil {
-		return Config{}, err
-	}
+	port := env.MustGetInt(PortEnv)
+	dbURL := env.MustGetString(DatabaseUrlEnv)
 
-	dbURL, err := env.GetString(DatabaseUrlEnv)
-	if err != nil {
-		return Config{}, err
-	}
+	rootPath := env.MustGetString(RootPathEnv)
 
-	rootPath, err := env.GetString(RootPathEnv)
-	if err != nil {
-		return Config{}, err
-	}
+	emailServerURL := env.MustGetURL(EmailServerHostEnv)
+	emailServerUsername := env.MustGetString(EmailServerUsernameEnv)
+	emailServerPassword := env.MustGetString(EmailServerPasswordEnv)
+	emailServerSender := env.MustGetString(EmailServerSenderEnv)
 
 	migrationsPath := path.Join(rootPath, "db", "migrations")
-
-	emailServerURL, err := env.GetURL(EmailServerHostEnv)
-	if err != nil {
-		return Config{}, err
-	}
-
-	emailServerUsername, err := env.GetString(EmailServerUsernameEnv)
-	if err != nil {
-		return Config{}, err
-	}
-
-	emailServerPassword, err := env.GetString(EmailServerPasswordEnv)
-	if err != nil {
-		return Config{}, err
-	}
-
-	emailServerSender, err := env.GetString(EmailServerSenderEnv)
-	if err != nil {
-		return Config{}, err
-	}
 
 	return Config{
 		Logger:         logger,

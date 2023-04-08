@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"reflect"
 	"strconv"
 )
 
@@ -17,58 +18,42 @@ func errNotFound(key string) error {
 	return fmt.Errorf("key: %s: %w", key, ErrNotFound)
 }
 
-func errConversionFailed(key string, typeName string) error {
+func errConversionFailed(key string, typeName string, err error) error {
 	return fmt.Errorf("key: %s type: %s: %w", key, typeName, ErrConversionFailed)
 }
 
-func GetStringOrDefault(key string, defaultVal string) string {
+func MustGetString(key string) string {
 	if val, found := os.LookupEnv(key); found {
 		return val
 	}
 
-	return defaultVal
+	panic(errNotFound(key))
 }
 
-func GetString(key string) (string, error) {
-	if val, found := os.LookupEnv(key); found {
-		return val, nil
+func MustGetInt(key string) int {
+	envVal, found := os.LookupEnv(key)
+	if !found {
+		panic(errNotFound(key))
 	}
 
-	return "", errNotFound(key)
-}
-
-func GetIntOrDefault(key string, defaultVal int) int {
-	if val, found := os.LookupEnv(key); found {
-		parsed, err := strconv.Atoi(val)
-		if err != nil {
-			return defaultVal
-		}
-
-		return parsed
+	val, err := strconv.Atoi(envVal)
+	if err != nil {
+		panic(errConversionFailed(key, reflect.TypeOf(val).Name(), err))
 	}
 
-	return defaultVal
+	return val
 }
 
-func GetInt(key string) (int, error) {
+func MustGetURL(key string) *url.URL {
 	val, found := os.LookupEnv(key)
 	if !found {
-		return 0, errNotFound(key)
-	}
-
-	return strconv.Atoi(val)
-}
-
-func GetURL(key string) (*url.URL, error) {
-	val, found := os.LookupEnv(key)
-	if !found {
-		return nil, errNotFound(key)
+		panic(errNotFound(key))
 	}
 
 	u, err := url.Parse(val)
 	if err != nil {
-		return nil, err
+		panic(errConversionFailed(key, reflect.TypeOf(u).Name(), err))
 	}
 
-	return u, nil
+	return u
 }

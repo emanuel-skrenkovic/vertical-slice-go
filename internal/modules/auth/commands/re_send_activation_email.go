@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"github.com/eskrenkovic/mediator-go"
+	"net/http"
 	"time"
 
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/domain"
@@ -23,6 +25,23 @@ func (c ReSendActivationEmailCommand) Validate() error {
 	}
 
 	return nil
+}
+
+func HandleReSendConfirmationEmail(m *mediator.Mediator) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		command, err := core.RequestBody[ReSendActivationEmailCommand](r)
+		if err != nil {
+			core.WriteBadRequest(w, r, err)
+			return
+		}
+
+		if _, err := mediator.Send[ReSendActivationEmailCommand, core.Unit](m, r.Context(), command); err != nil {
+			core.WriteCommandError(w, r, err)
+			return
+		}
+
+		core.WriteOK(w, r, nil)
+	}
 }
 
 type ReSendActivationEmailCommandHandler struct {
@@ -83,7 +102,6 @@ func (h ReSendActivationEmailCommandHandler) Handle(
 		_, err = h.db.NamedExecContext(ctx, activationCodeStmt, activationCode)
 		return err
 	})
-
 	if err != nil {
 		return core.Unit{}, core.NewCommandError(500, err)
 	}

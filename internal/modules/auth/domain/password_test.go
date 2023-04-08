@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"crypto/sha256"
 	"testing"
 
 	"github.com/google/uuid"
@@ -11,7 +12,7 @@ func Test_Password_Matches_Hash(t *testing.T) {
 	// Arrange
 	password := uuid.NewString()
 
-	hasher := NewSHA256PasswordHasher()
+	hasher := NewPasswordHasher(sha256.New)
 
 	passwordHash, err := hasher.HashPassword(password)
 

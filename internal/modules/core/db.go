@@ -47,7 +47,7 @@ func Tx(
 	err = transaction(ctx, tx)
 	if err != nil {
 		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return errors.Wrapf(err, "%w", rollbackErr)
+			return fmt.Errorf("%s: %w", rollbackErr.Error(), err)
 		}
 
 		return err
@@ -56,7 +56,7 @@ func Tx(
 	err = tx.Commit()
 	if err != nil {
 		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return errors.Wrapf(err, "%w", rollbackErr)
+			return fmt.Errorf("%s: %w", rollbackErr.Error(), err)
 		}
 
 		return err

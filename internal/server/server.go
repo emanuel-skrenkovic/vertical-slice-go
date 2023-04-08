@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"crypto/sha256"
+	"github.com/google/uuid"
 	"log"
 	"net"
 	"net/http"
@@ -110,10 +111,10 @@ func NewHTTPServer(config config.Config) (Server, error) {
 
 	smtpServerAuth := smtp.PlainAuth("", config.Email.Username, config.Email.Password, authHost)
 	emailClient := core.NewEmailClient(config.Email.Host, smtpServerAuth)
-	passwordHasher := authdomain.NewSHA256PasswordHasher(sha256.New)
+	passwordHasher := authdomain.NewPasswordHasher(sha256.New)
 
 	loginHandler := authcommands.NewLoginCommandHandler(db, *passwordHasher)
-	err = mediator.RegisterRequestHandler[authcommands.LoginCommand, core.Unit](
+	err = mediator.RegisterRequestHandler[authcommands.LoginCommand, uuid.UUID](
 		m,
 		loginHandler,
 	)
@@ -148,6 +149,9 @@ func NewHTTPServer(config config.Config) (Server, error) {
 		m,
 		processActivationCodesCommandHandler,
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	reSendActivationEmailCommandHandler := authcommands.NewReSendActivationEmailCommandHandler(
 		db,
@@ -158,20 +162,22 @@ func NewHTTPServer(config config.Config) (Server, error) {
 		m,
 		reSendActivationEmailCommandHandler,
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	// http
 
 	// Game sessions
 	gameSessionEndpointHandler := gamesession.NewGameSessionHTTPHandler(m)
 
-	// auth
-	authEndpointHandler := auth.NewAuthHTTPHandler(m)
-
 	router.Group(func(r chi.Router) {
 		router.Route("/game-sessions", func(r chi.Router) {
 			r.Use(middleware.StripSlashes)
 			r.Use(middleware.RequestID)
 			r.Use(core.CorrelationIDHTTPMiddleware)
+
+			r.Use(auth.AuthenticationMiddleware(db))
 
 			r.Get("/", gameSessionEndpointHandler.HandleGetOwnedSessions)
 			r.Post("/", gameSessionEndpointHandler.HandleCreateGameSession)
@@ -183,18 +189,16 @@ func NewHTTPServer(config config.Config) (Server, error) {
 			r.Use(middleware.RequestID)
 			r.Use(core.CorrelationIDHTTPMiddleware)
 
-			r.Post("/login", authEndpointHandler.HandleLogin)
-			r.Post("/logout", authEndpointHandler.HandleLogout)
-			r.Post("/registrations", authEndpointHandler.HandleRegistration)
-			r.Post("/registrations/actions/confirm", authEndpointHandler.HandleVerifyRegistration)
-			r.Post("/registrations/actions/publish-confirmation-emails", authEndpointHandler.HandlePublishConfirmationEmails)
-			r.Post("/registrations/actions/send-activation-code", authEndpointHandler.HandleReSendConnfirmationEmail)
+			r.Post("/login", authcommands.HandleLogin(m))
+			r.Post("/logout", authcommands.HandleLogout)
+			r.Post("/registrations", authcommands.HandleRegistration(m))
+			r.Post("/registrations/actions/confirm", authcommands.HandleVerifyRegistration(m))
+			r.Post("/registrations/actions/publish-confirmation-emails", authcommands.HandlePublishConfirmationEmails(m))
+			r.Post("/registrations/actions/send-activation-code", authcommands.HandleReSendConfirmationEmail(m))
 		})
 	})
 
-	return &HTTPServer{
-		server: &server,
-	}, nil
+	return &HTTPServer{server: &server}, nil
 }
 
 func (s *HTTPServer) Start() error {

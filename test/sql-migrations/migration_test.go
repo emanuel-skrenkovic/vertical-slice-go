@@ -57,14 +57,6 @@ const (
 
 	mainTable2DownMigration = `
 		DROP TABLE main_table2;`
-
-	mainTable2mainTable2Migration = `
-		CREATE TABLE main_table1_main_table2 (
-			main_id_1 INTEGER REFERENCES main_table1(id),
-			main_id_2 INTEGER REFERENCES main_table2(id),
-
-			CONSTRAINT pk_main_table1_main_table2 PRIMARY KEY (main_id_1, main_id_2)
-		);`
 )
 
 func TestMain(m *testing.M) {

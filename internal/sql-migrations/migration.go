@@ -65,8 +65,7 @@ func Run(migrationsPath string, connectionString string) error {
 			return err
 		}
 
-		var m Migration
-		m = migrations[migrationNumber]
+		m := migrations[migrationNumber]
 
 		m.Version = migrationNumber
 
@@ -102,7 +101,7 @@ func Run(migrationsPath string, connectionString string) error {
 
 	// TODO: find diff between DB and file-defined migrations
 	var alreadyAppliedMigrations []Migration
-	if err = db.Select(&alreadyAppliedMigrations, getAppliedMigrationsQuery()); err != nil {
+	if err := db.Select(&alreadyAppliedMigrations, getAppliedMigrationsQuery()); err != nil {
 		return err
 	}
 
@@ -128,7 +127,7 @@ func Run(migrationsPath string, connectionString string) error {
 		return migrationsToApply[i].Version < migrationsToApply[j].Version
 	})
 
-	newlyAppliedMigrations := []Migration{}
+	var newlyAppliedMigrations []Migration
 
 	var migrationErr error
 	for _, migration := range migrationsToApply {
@@ -158,7 +157,7 @@ func Run(migrationsPath string, connectionString string) error {
 			migrationErr = err
 			func() {
 				if err := tx.Rollback(); err != nil {
-					// migrationErr = fmt.Errorf("failed to roll back transaction: %w", err)
+					migrationErr = fmt.Errorf("failed to roll back transaction: %w", err)
 				}
 			}()
 			break
@@ -168,7 +167,7 @@ func Run(migrationsPath string, connectionString string) error {
 			migrationErr = err
 			func() {
 				if err := tx.Rollback(); err != nil {
-					// migrationErr = fmt.Errorf("failed to roll back transaction: %w", err)
+					migrationErr = fmt.Errorf("failed to roll back transaction: %w", err)
 				}
 			}()
 			break
@@ -203,7 +202,7 @@ func validateFoundMigrationFiles(migrations map[int]Migration) error {
 
 func revertState(db *sqlx.DB, appliedMigrations []Migration) error {
 	var rollbackErr error
-	for i := len(appliedMigrations)-1; i >= 0; i-- {
+	for i := len(appliedMigrations) - 1; i >= 0; i-- {
 		migration := appliedMigrations[i]
 
 		tx, err := db.BeginTxx(context.Background(), nil)

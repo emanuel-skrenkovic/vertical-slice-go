@@ -1,7 +1,9 @@
 package domain
 
 import (
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -17,7 +19,6 @@ type User struct {
 	UnsuccessfulLoginAttempts int       `db:"unsuccessful_login_attempts"`
 }
 
-// TODO: move to register.go ?
 func RegisterUser(
 	username string,
 	email string,
@@ -38,11 +39,32 @@ func RegisterUser(
 	}, nil
 }
 
-func (u *User) Authenticate(password string, passwordHasher PasswordHasher) error {
+var ErrSessionExpired = errors.New("session expired")
+
+type Session struct {
+	ID           uuid.UUID `db:"id"`
+	UserID       uuid.UUID `db:"user_id"`
+	ExpiresAtUTC time.Time `db:"expires_at"`
+}
+
+func (s Session) Validate() error {
+	if time.Now().UTC().After(s.ExpiresAtUTC) {
+		return ErrSessionExpired
+	}
+
+	return nil
+}
+
+func (u *User) Authenticate(password string, passwordHasher PasswordHasher) (Session, error) {
 	err := passwordHasher.Verify(u.PasswordHash, password)
 	if err == nil {
 		u.UnsuccessfulLoginAttempts = 0
-		return nil
+
+		return Session{
+			ID:           uuid.New(),
+			UserID:       u.ID,
+			ExpiresAtUTC: time.Now().UTC(),
+		}, nil
 	}
 
 	reason := err.Error()
@@ -55,5 +77,5 @@ func (u *User) Authenticate(password string, passwordHasher PasswordHasher) erro
 		reason = "account locked"
 	}
 
-	return fmt.Errorf("authentication failed: %s", reason)
+	return Session{}, fmt.Errorf("authentication failed: %s", reason)
 }

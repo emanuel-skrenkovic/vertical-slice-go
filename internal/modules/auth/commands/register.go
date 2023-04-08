@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"github.com/eskrenkovic/mediator-go"
+	"net/http"
 	"time"
 
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/domain"
@@ -32,6 +34,23 @@ func (c RegisterCommand) Validate() error {
 	}
 
 	return nil
+}
+
+func HandleRegistration(m *mediator.Mediator) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		command, err := core.RequestBody[RegisterCommand](r)
+		if err != nil {
+			core.WriteBadRequest(w, r, err)
+		}
+
+		_, err = mediator.Send[RegisterCommand, core.Unit](m, r.Context(), command)
+		if err != nil {
+			core.WriteCommandError(w, r, err)
+			return
+		}
+
+		core.WriteOK(w, r, nil)
+	}
 }
 
 type RegisterCommandHandler struct {

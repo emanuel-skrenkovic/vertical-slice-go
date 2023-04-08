@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/eskrenkovic/mediator-go"
+	"net/http"
 	"time"
 
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/domain"
@@ -19,6 +21,22 @@ type EmailConfiguration struct {
 }
 
 type ProcessActivationCodesCommand struct{}
+
+func HandlePublishConfirmationEmails(m *mediator.Mediator) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, err := mediator.Send[ProcessActivationCodesCommand, core.Unit](
+			m,
+			r.Context(),
+			ProcessActivationCodesCommand{},
+		)
+		if err != nil {
+			core.WriteCommandError(w, r, err)
+			return
+		}
+
+		core.WriteOK(w, r, nil)
+	}
+}
 
 type ProcessActivationCodesCommandHandler struct {
 	db          *sqlx.DB
@@ -49,11 +67,10 @@ func (h *ProcessActivationCodesCommandHandler) Handle(
 			u.email_confirmed = false AND c.expires_at > $1;`
 
 	var codes []domain.ActivationCode
-	err := h.db.SelectContext(ctx, &codes, stmt, time.Now().UTC())
-	switch {
-	case err != nil && errors.Is(err, sql.ErrNoRows):
-		return core.Unit{}, nil
-	case err != nil:
+	if err := h.db.SelectContext(ctx, &codes, stmt, time.Now().UTC()); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return core.Unit{}, nil
+		}
 		return core.Unit{}, core.NewCommandError(500, err)
 	}
 
@@ -68,7 +85,7 @@ func (h *ProcessActivationCodesCommandHandler) Handle(
 		return core.Unit{}, err
 	}
 
-	usersMap := make(map[uuid.UUID]domain.User, 0)
+	usersMap := make(map[uuid.UUID]domain.User, len(users))
 	for _, user := range users {
 		usersMap[user.ID] = user
 	}
@@ -98,6 +115,6 @@ func (h *ProcessActivationCodesCommandHandler) Handle(
 
 	// Mark all the codes as sent. If the user did not receive the code,
 	// they can click the re-send activation code button.
-	// It is prefered to not send the email than to send multiple ones.
+	// It is preferred to not send the email than to send multiple ones.
 	return core.Unit{}, errors.Join(errs...)
 }

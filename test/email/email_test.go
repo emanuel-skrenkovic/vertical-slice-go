@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/smtp"
 	"net/url"
 	"testing"
 
@@ -9,11 +10,14 @@ import (
 )
 
 func Test_Send_Sends_Email_To_Server(t *testing.T) {
+	// Arrange
 	host, err := url.Parse("smtp://127.0.0.1:1025")
 	require.NoError(t, err)
 
-	c, err := core.NewEmailClient(host, "", "")
-	require.NoError(t, err)
+	authHost := "127.0.0.1"
+	smtpServerAuth := smtp.PlainAuth("", "", "", authHost)
+
+	c := core.NewEmailClient(host, smtpServerAuth)
 
 	m := core.MailMessage{
 		Subject:    "I am the subject of an email",
@@ -25,5 +29,9 @@ func Test_Send_Sends_Email_To_Server(t *testing.T) {
 		IsHTML:     true,
 	}
 
-	require.NoError(t, c.Send(m))
+	// Act
+	err = c.Send(m)
+
+	// Assert
+	require.NoError(t, err)
 }

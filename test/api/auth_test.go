@@ -398,11 +398,12 @@ func Test_Login_With_Valid_Password_Succeeds(t *testing.T) {
 	payload, err = json.Marshal(verifyRegistrationCommand)
 	require.NoError(t, err)
 
-	resp, err = fixture.client.Post(
+	_, err = fixture.client.Post(
 		fmt.Sprintf("%s%s?token=%s", fixture.baseURL, "/auth/registrations/actions/confirm", token),
 		"application/json",
 		bytes.NewReader(payload),
 	)
+	require.NoError(t, err)
 
 	// Act
 	loginCommand := commands.LoginCommand{

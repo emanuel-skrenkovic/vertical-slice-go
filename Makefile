@@ -1,5 +1,5 @@
 .PHONY: build
-build:
+build: lint
 	go build cmd/api/main.go
 
 .PHONY: run
