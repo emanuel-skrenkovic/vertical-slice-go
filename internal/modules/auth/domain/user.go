@@ -63,7 +63,7 @@ func (u *User) Authenticate(password string, passwordHasher PasswordHasher) (Ses
 		return Session{
 			ID:           uuid.New(),
 			UserID:       u.ID,
-			ExpiresAtUTC: time.Now().UTC(),
+			ExpiresAtUTC: time.Now().UTC().Add(15 * time.Minute), // TODO: from configuration?
 		}, nil
 	}
 

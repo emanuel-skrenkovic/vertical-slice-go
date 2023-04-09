@@ -17,7 +17,7 @@ const sessionContextKey authContextKey = "session"
 func AuthenticationMiddleware(db *sqlx.DB) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			sessionID, err := r.Cookie("chess-session")
+			sessionIDCookie, err := r.Cookie("chess-session")
 			if err != nil {
 				core.WriteUnauthorized(w, r, nil)
 				return
@@ -32,7 +32,7 @@ func AuthenticationMiddleware(db *sqlx.DB) func(http.Handler) http.Handler {
 					id = $1;`
 
 			var session domain.Session
-			err = db.GetContext(r.Context(), &session, q, sessionID)
+			err = db.GetContext(r.Context(), &session, q, sessionIDCookie.Value)
 			switch {
 			case err != nil && errors.Is(err, sql.ErrNoRows):
 				core.WriteUnauthorized(w, r, nil)

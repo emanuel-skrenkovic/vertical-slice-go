@@ -63,7 +63,6 @@ func NewRegisterCommandHandler(db *sqlx.DB, passwordHasher domain.PasswordHasher
 }
 
 func (h *RegisterCommandHandler) Handle(ctx context.Context, request RegisterCommand) (core.Unit, error) {
-	var count int
 	const existingUserQuery = `
 		SELECT
 			count(id)
@@ -72,6 +71,7 @@ func (h *RegisterCommandHandler) Handle(ctx context.Context, request RegisterCom
 		WHERE
 			username = $1 OR email = $2;`
 
+	var count int
 	if err := h.db.GetContext(ctx, &count, existingUserQuery, request.Username, request.Email); err != nil {
 		return core.Unit{}, core.NewCommandError(500, err)
 	}
@@ -114,6 +114,9 @@ func (h *RegisterCommandHandler) Handle(ctx context.Context, request RegisterCom
 		return err
 	})
 
+	// Since changes need to be stored regardless of the auth result,
+	// set the error to be the auth result even if the save fails
+	// so the user sees that instead.
 	if err != nil {
 		return core.Unit{}, core.NewCommandError(500, err)
 	}

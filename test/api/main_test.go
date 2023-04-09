@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"go.uber.org/zap"
 	"log"
 	"net/http"
 	"net/url"
@@ -17,6 +16,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
+	"go.uber.org/zap"
 )
 
 type IntegrationTestFixture struct {

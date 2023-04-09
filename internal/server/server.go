@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"crypto/sha256"
-	"github.com/google/uuid"
 	"log"
 	"net"
 	"net/http"
@@ -12,18 +11,15 @@ import (
 
 	"github.com/eskrenkovic/mediator-go"
 	"github.com/eskrenkovic/vertical-slice-go/internal/config"
-	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
-
-	gamesession "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session"
-	gamesessioncommands "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/commands"
-	gamesessiondomain "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/domain"
-	gamesessionqueries "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/queries"
-
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/commands"
 	authcommands "github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/commands"
 	authdomain "github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/domain"
-
+	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
+	gamesession "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session"
+	gamesessioncommands "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/commands"
+	gamesessiondomain "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/domain"
+	gamesessionqueries "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/queries"
 	sqlmigration "github.com/eskrenkovic/vertical-slice-go/internal/sql-migrations"
 
 	"github.com/go-chi/chi"
@@ -114,7 +110,7 @@ func NewHTTPServer(config config.Config) (Server, error) {
 	passwordHasher := authdomain.NewPasswordHasher(sha256.New)
 
 	loginHandler := authcommands.NewLoginCommandHandler(db, *passwordHasher)
-	err = mediator.RegisterRequestHandler[authcommands.LoginCommand, uuid.UUID](
+	err = mediator.RegisterRequestHandler[authcommands.LoginCommand, authdomain.Session](
 		m,
 		loginHandler,
 	)

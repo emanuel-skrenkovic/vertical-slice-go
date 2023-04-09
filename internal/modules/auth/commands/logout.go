@@ -7,6 +7,6 @@ import (
 )
 
 func HandleLogout(w http.ResponseWriter, r *http.Request) {
-	http.SetCookie(w, &http.Cookie{MaxAge: -1})
+	http.SetCookie(w, &http.Cookie{Name: "chess-session", Path: "/", MaxAge: -1})
 	core.WriteOK(w, r, nil)
 }
