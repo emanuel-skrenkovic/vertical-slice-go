@@ -33,9 +33,9 @@ func NewCommandError(statusCode int, payload interface{}, opts ...CommandErrorOp
 
 func (r CommandError) Error() string {
 	var values struct {
-		Payload    interface{}
-		StatusCode int
-		Reason     string
+		Payload    interface{} `json:"payload"`
+		StatusCode int         `json:"statusCode"`
+		Reason     string      `json:"reason"`
 	}
 
 	values.Payload = r.Payload

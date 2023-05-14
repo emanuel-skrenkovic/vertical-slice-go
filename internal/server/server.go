@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"log"
 	"net"
 	"net/http"
@@ -24,7 +25,6 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
 
@@ -49,7 +49,7 @@ func NewHTTPServer(config config.Config) (Server, error) {
 		Handler: handlerWithBaseContext(baseCtx, router),
 	}
 
-	db, err := sqlx.Connect("postgres", config.DatabaseURL)
+	db, err := sql.Open("postgres", config.DatabaseURL)
 	if err != nil {
 		return nil, err
 	}

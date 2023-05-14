@@ -3,15 +3,15 @@ package commands
 import (
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"fmt"
 	"github.com/eskrenkovic/mediator-go"
+	"github.com/eskrenkovic/vertical-slice-go/internal/tql"
 	"net/http"
 	"time"
 
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/domain"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
-
-	"github.com/jmoiron/sqlx"
 )
 
 type RegisterCommand struct {
@@ -54,11 +54,11 @@ func HandleRegistration(m *mediator.Mediator) http.HandlerFunc {
 }
 
 type RegisterCommandHandler struct {
-	db             *sqlx.DB
+	db             *sql.DB
 	passwordHasher domain.PasswordHasher
 }
 
-func NewRegisterCommandHandler(db *sqlx.DB, passwordHasher domain.PasswordHasher) *RegisterCommandHandler {
+func NewRegisterCommandHandler(db *sql.DB, passwordHasher domain.PasswordHasher) *RegisterCommandHandler {
 	return &RegisterCommandHandler{db, passwordHasher}
 }
 
@@ -71,14 +71,14 @@ func (h *RegisterCommandHandler) Handle(ctx context.Context, request RegisterCom
 		WHERE
 			username = $1 OR email = $2;`
 
-	var count int
-	if err := h.db.GetContext(ctx, &count, existingUserQuery, request.Username, request.Email); err != nil {
+	count, err := tql.QueryFirst[int](ctx, h.db, existingUserQuery, request.Username, request.Email)
+	if err != nil {
 		return core.Unit{}, core.NewCommandError(500, err)
 	}
 
+	// Just return ok if the user already exists. If it's a valid request,
+	// the user will check their email.
 	if count > 0 {
-		// Just return ok if the user already exists. If it's a valid request,
-		// the user will check their email.
 		return core.Unit{}, nil
 	}
 
@@ -93,14 +93,14 @@ func (h *RegisterCommandHandler) Handle(ctx context.Context, request RegisterCom
 		return core.Unit{}, core.NewCommandError(500, err)
 	}
 
-	err = core.Tx(ctx, h.db, func(ctx context.Context, tx *sqlx.Tx) error {
+	err = core.Tx(ctx, h.db, func(ctx context.Context, tx *sql.Tx) error {
 		const stmt = `
 			INSERT INTO
 				auth.user (id, security_stamp, username, email, password_hash)
 			VALUES
 				(:id, :security_stamp, :username, :email, :password_hash);`
 
-		if _, err := tx.NamedExecContext(ctx, stmt, user); err != nil {
+		if _, err := tql.Exec(ctx, tx, stmt, user); err != nil {
 			return err
 		}
 
@@ -110,7 +110,7 @@ func (h *RegisterCommandHandler) Handle(ctx context.Context, request RegisterCom
 			VALUES
 				(:user_id, :security_stamp, :expires_at, :sent_at, :token, :used);`
 
-		_, err := tx.NamedExecContext(ctx, activationCodeStmt, activationCode)
+		_, err := tql.Exec(ctx, tx, activationCodeStmt, activationCode)
 		return err
 	})
 

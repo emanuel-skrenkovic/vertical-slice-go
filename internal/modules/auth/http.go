@@ -4,17 +4,18 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"net/http"
+
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/domain"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
-	"github.com/jmoiron/sqlx"
-	"net/http"
+	"github.com/eskrenkovic/vertical-slice-go/internal/tql"
 )
 
 type authContextKey string
 
 const sessionContextKey authContextKey = "session"
 
-func AuthenticationMiddleware(db *sqlx.DB) func(http.Handler) http.Handler {
+func AuthenticationMiddleware(db *sql.DB) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			sessionIDCookie, err := r.Cookie("chess-session")
@@ -31,8 +32,7 @@ func AuthenticationMiddleware(db *sqlx.DB) func(http.Handler) http.Handler {
 				WHERE
 					id = $1;`
 
-			var session domain.Session
-			err = db.GetContext(r.Context(), &session, q, sessionIDCookie.Value)
+			session, err := tql.QueryFirst[domain.Session](r.Context(), db, q, sessionIDCookie.Value)
 			switch {
 			case err != nil && errors.Is(err, sql.ErrNoRows):
 				core.WriteUnauthorized(w, r, nil)

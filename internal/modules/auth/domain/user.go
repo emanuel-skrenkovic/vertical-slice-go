@@ -43,6 +43,8 @@ var ErrSessionExpired = errors.New("session expired")
 
 type Session struct {
 	ID           uuid.UUID `db:"id"`
+	CreatedAt    time.Time `db:"created_at"`
+	UpdatedAt    time.Time `db:"updated_at"`
 	UserID       uuid.UUID `db:"user_id"`
 	ExpiresAtUTC time.Time `db:"expires_at"`
 }
@@ -60,10 +62,14 @@ func (u *User) Authenticate(password string, passwordHasher PasswordHasher) (Ses
 	if err == nil {
 		u.UnsuccessfulLoginAttempts = 0
 
+		now := time.Now().UTC()
 		return Session{
 			ID:           uuid.New(),
+			CreatedAt:    now,
+			UpdatedAt:    now,
 			UserID:       u.ID,
-			ExpiresAtUTC: time.Now().UTC().Add(15 * time.Minute), // TODO: from configuration?
+			ExpiresAtUTC: now.Add(15 * time.Minute), // TODO: from configuration?
+
 		}, nil
 	}
 

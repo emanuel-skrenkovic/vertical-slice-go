@@ -4,16 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"github.com/eskrenkovic/mediator-go"
 	"net/http"
 	"time"
 
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/domain"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
+	"github.com/eskrenkovic/vertical-slice-go/internal/tql"
+
+	"github.com/eskrenkovic/mediator-go"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
-
-	"github.com/jmoiron/sqlx"
 )
 
 type EmailConfiguration struct {
@@ -39,13 +39,13 @@ func HandlePublishConfirmationEmails(m *mediator.Mediator) http.HandlerFunc {
 }
 
 type ProcessActivationCodesCommandHandler struct {
-	db          *sqlx.DB
+	db          *sql.DB
 	emailClient *core.EmailClient
 	emailConfig EmailConfiguration
 }
 
 func NewProcessActivationCodesCommandHandler(
-	db *sqlx.DB,
+	db *sql.DB,
 	emailClient *core.EmailClient,
 	emailConfig EmailConfiguration,
 ) *ProcessActivationCodesCommandHandler {
@@ -66,8 +66,8 @@ func (h *ProcessActivationCodesCommandHandler) Handle(
 		WHERE
 			u.email_confirmed = false AND c.expires_at > $1;`
 
-	var codes []domain.ActivationCode
-	if err := h.db.SelectContext(ctx, &codes, stmt, time.Now().UTC()); err != nil {
+	codes, err := tql.Query[domain.ActivationCode](ctx, h.db, stmt, time.Now().UTC())
+	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return core.Unit{}, nil
 		}
@@ -80,8 +80,8 @@ func (h *ProcessActivationCodesCommandHandler) Handle(
 	})
 
 	const usersQuery = `SELECT * FROM auth.user WHERE id = ANY($1);`
-	var users []domain.User
-	if err := h.db.SelectContext(ctx, &users, usersQuery, pq.Array(userIDs)); err != nil {
+	users, err := tql.Query[domain.User](ctx, h.db, usersQuery, pq.Array(userIDs))
+	if err != nil {
 		return core.Unit{}, err
 	}
 
@@ -109,7 +109,7 @@ func (h *ProcessActivationCodesCommandHandler) Handle(
 			sent_at = $1
 		WHERE
 			id = ANY($2);`
-	if _, err := h.db.ExecContext(ctx, updateCodesStmt, time.Now().UTC(), pq.Array(codeIDs)); err != nil {
+	if _, err := tql.Exec(ctx, h.db, updateCodesStmt, time.Now().UTC(), pq.Array(codeIDs)); err != nil {
 		errs = append(errs, err)
 	}
 

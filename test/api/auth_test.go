@@ -1,8 +1,7 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/commands"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/domain"
+	"github.com/eskrenkovic/vertical-slice-go/internal/tql"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -18,27 +18,29 @@ import (
 func Test_Register_Registers_New_User_When_Email_Unique(t *testing.T) {
 	// Arrange
 	command := commands.RegisterCommand{
-		Email:    "test@test.com",
+		Email:    fmt.Sprintf("%s@test.com", uuid.New().String()),
 		Username: uuid.New().String(),
 		Password: uuid.New().String(),
 	}
 
-	payload, err := json.Marshal(command)
-	require.NoError(t, err)
-
 	// Act
-	resp, err := fixture.client.Post(
+	_, err := sendRequest[commands.RegisterCommand, any](
+		fixture.client,
 		fmt.Sprintf("%s%s", fixture.baseURL, "/auth/registrations"),
-		"application/json",
-		bytes.NewReader(payload),
+		http.MethodPost,
+		command,
+		func(resp *http.Response) { require.Equal(t, http.StatusOK, resp.StatusCode) },
 	)
 
 	// Assert
 	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
 
-	var user domain.User
-	err = fixture.db.Get(&user, "SELECT * FROM auth.user WHERE email = $1;", command.Email)
+	user, err := tql.QueryFirst[domain.User](
+		context.Background(),
+		fixture.db,
+		"SELECT * FROM auth.user WHERE email = $1;",
+		command.Email,
+	)
 	require.NoError(t, err)
 
 	require.Equal(t, command.Username, user.Username)
@@ -48,8 +50,12 @@ func Test_Register_Registers_New_User_When_Email_Unique(t *testing.T) {
 	require.False(t, user.EmailConfirmed)
 	require.Zero(t, user.UnsuccessfulLoginAttempts)
 
-	var code domain.ActivationCode
-	err = fixture.db.Get(&code, "SELECT * FROM auth.activation_code WHERE user_id = $1;", user.ID)
+	code, err := tql.QueryFirst[domain.ActivationCode](
+		context.Background(),
+		fixture.db,
+		"SELECT * FROM auth.activation_code WHERE user_id = $1;",
+		user.ID,
+	)
 	require.NoError(t, err)
 
 	require.Equal(t, user.SecurityStamp, code.SecurityStamp)
@@ -67,13 +73,12 @@ func Test_Register_Does_Not_Create_Another_User_When_Username_Exists(t *testing.
 		Password: uuid.New().String(),
 	}
 
-	payload, err := json.Marshal(command1)
-	require.NoError(t, err)
-
-	_, err = fixture.client.Post(
-		fmt.Sprintf("%s%s", fixture.baseURL, "/auth/registrations"),
-		"application/json",
-		bytes.NewReader(payload),
+	registerPath := fmt.Sprintf("%s%s", fixture.baseURL, "/auth/registrations")
+	_, err := sendRequest[commands.RegisterCommand, any](
+		fixture.client,
+		registerPath,
+		http.MethodPost,
+		command1,
 	)
 	require.NoError(t, err)
 
@@ -83,29 +88,35 @@ func Test_Register_Does_Not_Create_Another_User_When_Username_Exists(t *testing.
 		Password: uuid.New().String(),
 	}
 
-	payload, err = json.Marshal(command)
-	require.NoError(t, err)
-
 	// Act
-	resp, err := fixture.client.Post(
-		fmt.Sprintf("%s%s", fixture.baseURL, "/auth/registrations"),
-		"application/json",
-		bytes.NewReader(payload),
+	_, err = sendRequest[commands.RegisterCommand, any](
+		fixture.client,
+		registerPath,
+		http.MethodPost,
+		command,
+		func(resp *http.Response) { require.Equal(t, http.StatusOK, resp.StatusCode) },
 	)
 
 	// Assert
 	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
 
-	var count int
-	err = fixture.db.Get(&count, "SELECT COUNT(id) FROM auth.user WHERE username = $1;", username)
+	count, err := tql.QueryFirst[int](
+		context.Background(),
+		fixture.db,
+		"SELECT COUNT(id) FROM auth.user WHERE username = $1;",
+		username,
+	)
 	require.NoError(t, err)
 
 	expectedUsersCount := 1
 	require.Equal(t, expectedUsersCount, count)
 
-	var user domain.User
-	err = fixture.db.Get(&user, "SELECT * FROM auth.user WHERE username = $1;", username)
+	user, err := tql.QueryFirst[domain.User](
+		context.Background(),
+		fixture.db,
+		"SELECT * FROM auth.user WHERE username = $1;",
+		username,
+	)
 	require.NoError(t, err)
 
 	require.Equal(t, username, user.Username)
@@ -115,8 +126,12 @@ func Test_Register_Does_Not_Create_Another_User_When_Username_Exists(t *testing.
 	require.False(t, user.EmailConfirmed)
 	require.Zero(t, user.UnsuccessfulLoginAttempts)
 
-	var code domain.ActivationCode
-	err = fixture.db.Get(&code, "SELECT * FROM auth.activation_code WHERE user_id = $1;", user.ID)
+	code, err := tql.QueryFirst[domain.ActivationCode](
+		context.Background(),
+		fixture.db,
+		"SELECT * FROM auth.activation_code WHERE user_id = $1;",
+		user.ID,
+	)
 	require.NoError(t, err)
 
 	require.Equal(t, user.SecurityStamp, code.SecurityStamp)
@@ -134,14 +149,8 @@ func Test_Register_Does_Not_Create_Another_User_When_Email_Exists(t *testing.T) 
 		Password: uuid.New().String(),
 	}
 
-	payload, err := json.Marshal(command1)
-	require.NoError(t, err)
-
-	_, err = fixture.client.Post(
-		fmt.Sprintf("%s%s", fixture.baseURL, "/auth/registrations"),
-		"application/json",
-		bytes.NewReader(payload),
-	)
+	registerPath := fmt.Sprintf("%s%s", fixture.baseURL, "/auth/registrations")
+	_, err := sendRequest[commands.RegisterCommand, any](fixture.client, registerPath, http.MethodPost, command1)
 	require.NoError(t, err)
 
 	command := commands.RegisterCommand{
@@ -150,29 +159,26 @@ func Test_Register_Does_Not_Create_Another_User_When_Email_Exists(t *testing.T) 
 		Password: uuid.New().String(),
 	}
 
-	payload, err = json.Marshal(command)
-	require.NoError(t, err)
-
 	// Act
-	resp, err := fixture.client.Post(
-		fmt.Sprintf("%s%s", fixture.baseURL, "/auth/registrations"),
-		"application/json",
-		bytes.NewReader(payload),
+	_, err = sendRequest[commands.RegisterCommand, any](
+		fixture.client,
+		registerPath,
+		http.MethodPost,
+		command,
+		func(resp *http.Response) {
+			require.Equal(t, http.StatusOK, resp.StatusCode)
+		},
 	)
-
 	// Assert
 	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
 
-	var count int
-	err = fixture.db.Get(&count, "SELECT COUNT(id) FROM auth.user WHERE email = $1;", command.Email)
+	count, err := tql.QueryFirst[int](context.Background(), fixture.db, "SELECT COUNT(id) FROM auth.user WHERE email = $1;", command.Email)
 	require.NoError(t, err)
 
 	expectedUsersCount := 1
 	require.Equal(t, expectedUsersCount, count)
 
-	var user domain.User
-	err = fixture.db.Get(&user, "SELECT * FROM auth.user WHERE email = $1;", command.Email)
+	user, err := tql.QueryFirst[domain.User](context.Background(), fixture.db, "SELECT * FROM auth.user WHERE email = $1;", command.Email)
 	require.NoError(t, err)
 
 	require.Equal(t, command1.Username, user.Username)
@@ -191,37 +197,32 @@ func Test_ProcessActivationCodes_Updates_ActivationCode_On_Send(t *testing.T) {
 		Password: uuid.New().String(),
 	}
 
-	payload, err := json.Marshal(registerUserCommand)
-	require.NoError(t, err)
-
-	// Act
-	_, err = fixture.client.Post(
+	_, err := sendRequest[commands.RegisterCommand, any](
+		fixture.client,
 		fmt.Sprintf("%s%s", fixture.baseURL, "/auth/registrations"),
-		"application/json",
-		bytes.NewReader(payload),
+		http.MethodPost,
+		registerUserCommand,
 	)
 	require.NoError(t, err)
 
 	// Act
-	resp, err := fixture.client.Post(
+	_, err = sendRequest[any, any](
+		fixture.client,
 		fmt.Sprintf("%s%s", fixture.baseURL, "/auth/registrations/actions/publish-confirmation-emails"),
-		"application/json",
-		bytes.NewReader(payload),
+		http.MethodPost,
+		nil,
+		func(resp *http.Response) { require.Equal(t, http.StatusOK, resp.StatusCode) },
 	)
 
 	// Assert
 	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
 
-	var activationCode domain.ActivationCode
-	err = fixture.db.Get(
-		&activationCode,
-		`SELECT ac.*
+	const q = `
+		SELECT ac.*
 		FROM auth.activation_code ac
 		INNER JOIN auth.user u ON ac.user_id = u.id
-		WHERE u.email = $1;`,
-		registerUserCommand.Email,
-	)
+		WHERE u.email = $1;`
+	activationCode, err := tql.QueryFirst[domain.ActivationCode](context.Background(), fixture.db, q, registerUserCommand.Email)
 	require.NoError(t, err)
 
 	require.NotNil(t, activationCode.SentAt)
@@ -238,55 +239,50 @@ func Test_SendActivationCode_Creates_New_ActivationCode(t *testing.T) {
 		Password: uuid.New().String(),
 	}
 
-	payload, err := json.Marshal(registerUserCommand)
-	require.NoError(t, err)
-
-	resp, err := fixture.client.Post(
+	_, err := sendRequest[commands.RegisterCommand, any](
+		fixture.client,
 		fmt.Sprintf("%s%s", fixture.baseURL, "/auth/registrations"),
-		"application/json",
-		bytes.NewReader(payload),
+		http.MethodPost,
+		registerUserCommand,
 	)
 	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
 
-	resp, err = fixture.client.Post(
+	_, err = sendRequest[any, any](
+		fixture.client,
 		fmt.Sprintf("%s%s", fixture.baseURL, "/auth/registrations/actions/publish-confirmation-emails"),
-		"application/json",
+		http.MethodPost,
 		nil,
 	)
 	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
 
-	var userID uuid.UUID
-	err = fixture.db.Get(&userID, "SELECT id FROM auth.user WHERE email = $1;", registerUserCommand.Email)
-	require.NoError(t, err)
-
-	// Act
-	reSendConfirmationCommand := commands.ReSendActivationEmailCommand{UserID: userID}
-	payload, err = json.Marshal(reSendConfirmationCommand)
-	require.NoError(t, err)
-
-	resp, err = fixture.client.Post(
-		fmt.Sprintf("%s%s", fixture.baseURL, "/auth/registrations/actions/send-activation-code"),
-		"application/json",
-		bytes.NewReader(payload),
-	)
-
-	// Assert
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-
-	var activationCodes []domain.ActivationCode
-	err = fixture.db.Select(
-		&activationCodes,
-		`SELECT ac.*
-		FROM auth.activation_code ac
-		INNER JOIN auth.user u ON ac.user_id = u.id
-		WHERE u.email = $1;`,
+	userID, err := tql.QueryFirst[uuid.UUID](
+		context.Background(),
+		fixture.db,
+		"SELECT id FROM auth.user WHERE email = $1;",
 		registerUserCommand.Email,
 	)
 	require.NoError(t, err)
 
+	// Act
+	reSendConfirmationCommand := commands.ReSendActivationEmailCommand{UserID: userID}
+	_, err = sendRequest[commands.ReSendActivationEmailCommand, any](
+		fixture.client,
+		fmt.Sprintf("%s%s", fixture.baseURL, "/auth/registrations/actions/send-activation-code"),
+		http.MethodPost,
+		reSendConfirmationCommand,
+		func(resp *http.Response) { require.Equal(t, http.StatusOK, resp.StatusCode) },
+	)
+
+	// Assert
+	require.NoError(t, err)
+
+	const q = `
+		SELECT ac.*
+		FROM auth.activation_code ac
+		INNER JOIN auth.user u ON ac.user_id = u.id
+		WHERE u.email = $1;`
+	activationCodes, err := tql.Query[domain.ActivationCode](context.Background(), fixture.db, q, registerUserCommand.Email)
+	require.NoError(t, err)
 	require.Len(t, activationCodes, 2)
 
 	for _, activationCode := range activationCodes {
@@ -305,20 +301,18 @@ func Test_VerifyRegistration_Returns_Error_When_ActivationCode_Is_Invalid(t *tes
 		Password: uuid.New().String(),
 	}
 
-	payload, err := json.Marshal(registerUserCommand)
-	require.NoError(t, err)
-
-	resp, err := fixture.client.Post(
+	_, err := sendRequest[commands.RegisterCommand, any](
+		fixture.client,
 		fmt.Sprintf("%s%s", fixture.baseURL, "/auth/registrations"),
-		"application/json",
-		bytes.NewReader(payload),
+		http.MethodPost,
+		registerUserCommand,
+		func(resp *http.Response) { require.Equal(t, http.StatusOK, resp.StatusCode) },
 	)
 	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
 
-	var token string
-	err = fixture.db.Get(
-		&token,
+	token, err := tql.QueryFirst[string](
+		context.Background(),
+		fixture.db,
 		`SELECT
 			token
 		FROM
@@ -332,28 +326,29 @@ func Test_VerifyRegistration_Returns_Error_When_ActivationCode_Is_Invalid(t *tes
 	fakeToken := uuid.New()
 
 	// Act
-	resp, err = fixture.client.Post(
+	_, err = sendRequest[any, any](
+		fixture.client,
 		fmt.Sprintf("%s%s?token=%s", fixture.baseURL, "/auth/registrations/actions/confirm", fakeToken),
-		"application/json",
-		bytes.NewReader(payload),
+		http.MethodPost,
+		nil,
+		func(resp *http.Response) { require.Equal(t, http.StatusBadRequest, resp.StatusCode) },
 	)
 
 	// Assert
 	require.NoError(t, err)
-	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
-	var confirmed bool
-	err = fixture.db.Get(
-		&confirmed,
+	confirmed, err := tql.QueryFirst[bool](
+		context.Background(),
+		fixture.db,
 		"SELECT email_confirmed FROM auth.user WHERE email = $1;",
 		registerUserCommand.Email,
 	)
 	require.NoError(t, err)
 	require.False(t, confirmed)
 
-	var activationCodeUsed bool
-	err = fixture.db.Get(
-		&activationCodeUsed,
+	activationCodeUsed, err := tql.QueryFirst[bool](
+		context.Background(),
+		fixture.db,
 		"SELECT used FROM auth.activation_code WHERE token = $1;",
 		token,
 	)
@@ -369,20 +364,18 @@ func Test_Login_With_Valid_Password_Succeeds(t *testing.T) {
 		Password: uuid.New().String(),
 	}
 
-	payload, err := json.Marshal(registerUserCommand)
-	require.NoError(t, err)
-
-	resp, err := fixture.client.Post(
+	_, err := sendRequest[commands.RegisterCommand, any](
+		fixture.client,
 		fmt.Sprintf("%s%s", fixture.baseURL, "/auth/registrations"),
-		"application/json",
-		bytes.NewReader(payload),
+		http.MethodPost,
+		registerUserCommand,
+		func(resp *http.Response) { require.Equal(t, http.StatusOK, resp.StatusCode) },
 	)
 	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
 
-	var token string
-	err = fixture.db.Get(
-		&token,
+	token, err := tql.QueryFirst[string](
+		context.Background(),
+		fixture.db,
 		`SELECT
 			token
 		FROM
@@ -393,15 +386,11 @@ func Test_Login_With_Valid_Password_Succeeds(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	verifyRegistrationCommand := commands.VerifyRegistrationCommand{Token: token}
-
-	payload, err = json.Marshal(verifyRegistrationCommand)
-	require.NoError(t, err)
-
-	_, err = fixture.client.Post(
+	_, err = sendRequest[commands.VerifyRegistrationCommand, any](
+		fixture.client,
 		fmt.Sprintf("%s%s?token=%s", fixture.baseURL, "/auth/registrations/actions/confirm", token),
-		"application/json",
-		bytes.NewReader(payload),
+		http.MethodPost,
+		commands.VerifyRegistrationCommand{Token: token},
 	)
 	require.NoError(t, err)
 
@@ -411,16 +400,16 @@ func Test_Login_With_Valid_Password_Succeeds(t *testing.T) {
 		Password: registerUserCommand.Password,
 	}
 
-	payload, err = json.Marshal(loginCommand)
-	require.NoError(t, err)
-
-	resp, err = fixture.client.Post(
+	_, err = sendRequest[commands.LoginCommand, any](
+		fixture.client,
 		fmt.Sprintf("%s%s", fixture.baseURL, "/auth/login"),
-		"application/json",
-		bytes.NewReader(payload),
+		http.MethodPost,
+		loginCommand,
+		func(resp *http.Response) {
+			require.Equal(t, http.StatusOK, resp.StatusCode)
+
+			require.Greater(t, len(resp.Cookies()), 0)
+		},
 	)
 	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-
-	require.Greater(t, len(resp.Cookies()), 0)
 }

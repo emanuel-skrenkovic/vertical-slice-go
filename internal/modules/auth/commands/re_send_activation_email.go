@@ -3,15 +3,16 @@ package commands
 import (
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"fmt"
-	"github.com/eskrenkovic/mediator-go"
 	"net/http"
 	"time"
 
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/domain"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
-	"github.com/jmoiron/sqlx"
+	"github.com/eskrenkovic/vertical-slice-go/internal/tql"
 
+	"github.com/eskrenkovic/mediator-go"
 	"github.com/google/uuid"
 )
 
@@ -45,13 +46,13 @@ func HandleReSendConfirmationEmail(m *mediator.Mediator) http.HandlerFunc {
 }
 
 type ReSendActivationEmailCommandHandler struct {
-	db          *sqlx.DB
+	db          *sql.DB
 	emailClient *core.EmailClient
 	emailSender string
 }
 
 func NewReSendActivationEmailCommandHandler(
-	db *sqlx.DB,
+	db *sql.DB,
 	emailClient *core.EmailClient,
 	emailSender string,
 ) *ReSendActivationEmailCommandHandler {
@@ -64,8 +65,8 @@ func (h ReSendActivationEmailCommandHandler) Handle(
 ) (core.Unit, error) {
 	const getUserQuery = "SELECT * FROM auth.user WHERE id = $1;"
 
-	var user domain.User
-	if err := h.db.GetContext(ctx, &user, getUserQuery, request.UserID); err != nil {
+	user, err := tql.QueryFirst[domain.User](ctx, h.db, getUserQuery, request.UserID)
+	if err != nil {
 		return core.Unit{}, core.NewCommandError(400, err)
 	}
 
@@ -80,7 +81,7 @@ func (h ReSendActivationEmailCommandHandler) Handle(
 	nowUTC := time.Now().UTC()
 	activationCode.SentAt = &nowUTC
 
-	err = core.Tx(ctx, h.db, func(ctx context.Context, tx *sqlx.Tx) error {
+	err = core.Tx(ctx, h.db, func(ctx context.Context, tx *sql.Tx) error {
 		const updateUserStmt = `
 			UPDATE
 				auth.user
@@ -89,7 +90,7 @@ func (h ReSendActivationEmailCommandHandler) Handle(
 			WHERE
 				id = :id;`
 
-		if _, err := tx.NamedExecContext(ctx, updateUserStmt, user); err != nil {
+		if _, err := tql.Exec(ctx, tx, updateUserStmt, user); err != nil {
 			return err
 		}
 
@@ -99,7 +100,7 @@ func (h ReSendActivationEmailCommandHandler) Handle(
 			VALUES
 				(:user_id, :security_stamp, :expires_at, :sent_at, :token, :used);`
 
-		_, err = h.db.NamedExecContext(ctx, activationCodeStmt, activationCode)
+		_, err := tql.Exec(ctx, tx, activationCodeStmt, activationCode)
 		return err
 	})
 	if err != nil {

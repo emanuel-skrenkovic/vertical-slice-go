@@ -5,14 +5,14 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/eskrenkovic/mediator-go"
 	"net/http"
 
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/domain"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
-	"github.com/google/uuid"
+	"github.com/eskrenkovic/vertical-slice-go/internal/tql"
 
-	"github.com/jmoiron/sqlx"
+	"github.com/eskrenkovic/mediator-go"
+	"github.com/google/uuid"
 )
 
 type VerifyRegistrationCommand struct {
@@ -46,10 +46,10 @@ func HandleVerifyRegistration(m *mediator.Mediator) http.HandlerFunc {
 }
 
 type VerifyRegistrationCommandHandler struct {
-	db *sqlx.DB
+	db *sql.DB
 }
 
-func NewVerifyRegistrationCommandHandler(db *sqlx.DB) *VerifyRegistrationCommandHandler {
+func NewVerifyRegistrationCommandHandler(db *sql.DB) *VerifyRegistrationCommandHandler {
 	return &VerifyRegistrationCommandHandler{db}
 }
 
@@ -67,8 +67,8 @@ func (h *VerifyRegistrationCommandHandler) Handle(
 		WHERE
 			token = $1;`
 
-	var activationCode domain.ActivationCode
-	if err := h.db.GetContext(ctx, &activationCode, getCodeQuery, request.Token); err != nil {
+	activationCode, err := tql.QueryFirst[domain.ActivationCode](ctx, h.db, getCodeQuery, request.Token)
+	if err != nil {
 		return core.Unit{}, core.NewCommandError(400, fmt.Errorf("invalid activation code"))
 	}
 
@@ -80,18 +80,17 @@ func (h *VerifyRegistrationCommandHandler) Handle(
 		WHERE
 			id = $1 AND security_stamp = $2;`
 
-	var user domain.User
-	if err := h.db.GetContext(ctx, &user, stmt, activationCode.UserID, activationCode.SecurityStamp); err != nil {
+	user, err := tql.QueryFirst[domain.User](ctx, h.db, stmt, activationCode.UserID, activationCode.SecurityStamp)
+	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return core.Unit{}, core.NewCommandError(500, err, core.WithReason(invalidTokenMessage))
 		}
-
 		return core.Unit{}, core.NewCommandError(500, err)
 	}
 
 	if err := domain.ValidateUserActivationCode(activationCode, user); err != nil {
 		// TODO: should the security stamp be updated if the confirmation fails?
-		return core.Unit{}, core.NewCommandError(500, err, core.WithReason(invalidTokenMessage))
+		return core.Unit{}, core.NewCommandError(400, err, core.WithReason(invalidTokenMessage))
 	}
 
 	updateParams := map[string]interface{}{
@@ -100,7 +99,7 @@ func (h *VerifyRegistrationCommandHandler) Handle(
 		"new_security_stamp": uuid.New(),
 	}
 
-	err := core.Tx(ctx, h.db, func(ctx context.Context, tx *sqlx.Tx) error {
+	err = core.Tx(ctx, h.db, func(ctx context.Context, tx *sql.Tx) error {
 		const updateUserStmt = `
 			UPDATE
 				auth.user
@@ -110,8 +109,7 @@ func (h *VerifyRegistrationCommandHandler) Handle(
 			WHERE
 				id = :user_id AND security_stamp = :old_security_stamp;`
 
-		_, err := tx.NamedExecContext(ctx, updateUserStmt, updateParams)
-		if err != nil {
+		if _, err := tql.Exec(ctx, tx, updateUserStmt, updateParams); err != nil {
 			return err
 		}
 
@@ -123,11 +121,8 @@ func (h *VerifyRegistrationCommandHandler) Handle(
 			WHERE
 				token = $1;`
 
-		if _, err := tx.ExecContext(ctx, updateActivationCodeStmt, activationCode.Token); err != nil {
-			return err
-		}
-
-		return nil
+		_, err := tql.Exec(ctx, tx, updateActivationCodeStmt, activationCode.Token)
+		return err
 	})
 
 	if err != nil {

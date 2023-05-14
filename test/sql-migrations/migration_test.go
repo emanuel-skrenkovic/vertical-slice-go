@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/eskrenkovic/vertical-slice-go/internal/tql"
 	"log"
 	"os"
 	"path"
@@ -13,10 +16,10 @@ import (
 	"github.com/eskrenkovic/vertical-slice-go/internal/config"
 	sqlmigration "github.com/eskrenkovic/vertical-slice-go/internal/sql-migrations"
 	"github.com/eskrenkovic/vertical-slice-go/internal/test"
+
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/require"
 
-	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
 
@@ -24,7 +27,7 @@ var (
 	rootPath string
 
 	conf config.Config
-	db   *sqlx.DB
+	db   *sql.DB
 )
 
 const (
@@ -38,7 +41,7 @@ const (
 	mainTableDownMigration = `
 		DROP TABLE main_table1;`
 
-	depdendantTableUpMigration = `
+	dependentTableUpMigration = `
 		CREATE TABLE dependant_table (
 			id serial PRIMARY KEY,
 			main_id INTEGER,
@@ -46,7 +49,7 @@ const (
 			CONSTRAINT fk_main FOREIGN KEY(main_id) REFERENCES main_table1(id)
 		);`
 
-	depdendantTableDownMigration = `
+	dependentTableDownMigration = `
 		ALTER TABLE dependant_table DROP CONSTRAINT fk_main;
 		DROP TABLE dependant_table;`
 
@@ -60,15 +63,7 @@ const (
 )
 
 func TestMain(m *testing.M) {
-	args := os.Args
-
-	if len(args) < 2 {
-		log.Fatal("root path is required")
-	}
-	rootPath = args[len(args)-1]
-	if err := os.Setenv(config.RootPathEnv, rootPath); err != nil {
-		log.Fatal(err)
-	}
+	rootPath = "../../"
 
 	localConfigPath := path.Join(rootPath, "config.local.env")
 	if _, err := os.Stat(localConfigPath); err != nil {
@@ -138,7 +133,7 @@ func TestMain(m *testing.M) {
 		}
 	}()
 
-	db, err = sqlx.Connect("postgres", conf.DatabaseURL)
+	db, err = sql.Open("postgres", conf.DatabaseURL)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -146,6 +141,10 @@ func TestMain(m *testing.M) {
 	cleanUpTestMigrations()
 
 	_ = m.Run()
+
+	if err := recover(); err != nil {
+		log.Println(err)
+	}
 
 	if err := os.RemoveAll(testDir); err != nil {
 		log.Fatal(err)
@@ -161,7 +160,7 @@ func Test_Applies_All_Migrations_In_Directory(t *testing.T) {
 	}()
 
 	createMigrationFile(t, "main_table", mainTableUpMigration, mainTableDownMigration)
-	createMigrationFile(t, "dependant_table", depdendantTableUpMigration, depdendantTableDownMigration)
+	createMigrationFile(t, "dependant_table", dependentTableUpMigration, dependentTableDownMigration)
 
 	// Act
 	err := sqlmigration.Run(testMigrationsPath, conf.DatabaseURL)
@@ -184,7 +183,7 @@ func Test_Applied_Migrations_From_Directory_After_Already_Applied_Version(t *tes
 	}()
 
 	createMigrationFile(t, "main_table", mainTableUpMigration, mainTableDownMigration)
-	createMigrationFile(t, "dependant_table", depdendantTableUpMigration, depdendantTableDownMigration)
+	createMigrationFile(t, "dependant_table", dependentTableUpMigration, dependentTableDownMigration)
 
 	err := sqlmigration.Run(testMigrationsPath, conf.DatabaseURL)
 	require.NoError(t, err)
@@ -212,7 +211,7 @@ func Test_Reverts_All_Attempted_Migrations_On_Failed_Migration_Attempt(t *testin
 	}()
 
 	createMigrationFile(t, "main_table", mainTableUpMigration, mainTableDownMigration)
-	createMigrationFile(t, "dependant_table", depdendantTableUpMigration, depdendantTableDownMigration)
+	createMigrationFile(t, "dependant_table", dependentTableUpMigration, dependentTableDownMigration)
 
 	// Act
 	createMigrationFile(t, "main_table2", "invalid", "SELECT 1;")
@@ -240,14 +239,14 @@ func Test_Reverts_All_Attempted_Migrations_On_Failed_Migration_Attempt_Leaving_P
 	require.NoError(t, err)
 
 	// Act
-	createMigrationFile(t, "dependant_table", depdendantTableUpMigration, depdendantTableDownMigration)
+	createMigrationFile(t, "dependant_table", dependentTableUpMigration, dependentTableDownMigration)
 	createMigrationFile(t, "main_table2", "invalid", "SELECT 1;")
 	err = sqlmigration.Run(testMigrationsPath, conf.DatabaseURL)
 
 	// Assert
 	require.Error(t, err)
 
-	createMigrationFile(t, "dependant_table", depdendantTableUpMigration, depdendantTableDownMigration)
+	createMigrationFile(t, "dependant_table", dependentTableUpMigration, dependentTableDownMigration)
 	m := getMigrations(t, db)
 
 	expectedMigrationsFound := 1
@@ -255,7 +254,7 @@ func Test_Reverts_All_Attempted_Migrations_On_Failed_Migration_Attempt_Leaving_P
 }
 
 func cleanUpTestMigrations() {
-	db.MustExec("DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public")
+	_, _ = db.Exec("DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public")
 }
 
 func createMigrationFile(t *testing.T, name, upScript, downScript string) {
@@ -304,11 +303,9 @@ func getMigrationVersion(t *testing.T) int {
 	return highestVersion + 1
 }
 
-func getMigrations(t *testing.T, db *sqlx.DB) []sqlmigration.Migration {
-	var m []sqlmigration.Migration
-	err := db.Select(&m, "SELECT * FROM schema_migration;")
+func getMigrations(t *testing.T, db *sql.DB) []sqlmigration.Migration {
+	m, err := tql.Query[sqlmigration.Migration](context.Background(), db, "SELECT * FROM schema_migration;")
 	require.NoError(t, err)
-
 	return m
 }
 

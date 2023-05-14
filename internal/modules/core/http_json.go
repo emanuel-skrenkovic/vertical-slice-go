@@ -82,7 +82,13 @@ func writeBodyIfPresent(ctx context.Context, w http.ResponseWriter, body interfa
 	// Handle special case where the body is error
 	// as error marshals into an empty object.
 	if err, ok := body.(error); ok {
-		if _, err := w.Write([]byte(err.Error())); err != nil {
+		responseBytes, err := json.Marshal(err)
+		if err != nil {
+			LogError(ctx, "failed to serialize response error", zap.Error(err))
+			return
+		}
+
+		if _, err := w.Write(responseBytes); err != nil {
 			LogError(ctx, "failed to write response", zap.Error(err))
 		}
 		return

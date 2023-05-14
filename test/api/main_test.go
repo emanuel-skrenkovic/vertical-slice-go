@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -14,7 +15,6 @@ import (
 	"github.com/eskrenkovic/vertical-slice-go/internal/server"
 	"github.com/eskrenkovic/vertical-slice-go/internal/test"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 )
@@ -22,18 +22,13 @@ import (
 type IntegrationTestFixture struct {
 	client  *http.Client
 	baseURL string
-	db      *sqlx.DB
+	db      *sql.DB
 }
 
 var fixture IntegrationTestFixture
 
 func TestMain(m *testing.M) {
-	args := os.Args
-
-	if len(args) < 2 {
-		log.Fatal("root path is required")
-	}
-	rootPath := args[len(args)-1]
+	rootPath := "../../"
 	if err := os.Setenv(config.RootPathEnv, rootPath); err != nil {
 		log.Fatal(err)
 	}
@@ -114,7 +109,7 @@ func initFixture(config config.Config) error {
 	}
 	fixture.baseURL = u.String()
 
-	db, err := sqlx.Connect("postgres", config.DatabaseURL)
+	db, err := sql.Open("postgres", config.DatabaseURL)
 	if err != nil {
 		return err
 	}

@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 )
 
@@ -19,8 +18,8 @@ func WithIsolationLevel(isolationLevel sql.IsolationLevel) TransactionOption {
 
 func Tx(
 	ctx context.Context,
-	db *sqlx.DB,
-	transaction func(context.Context, *sqlx.Tx) error,
+	db *sql.DB,
+	transaction func(context.Context, *sql.Tx) error,
 	opts ...TransactionOption,
 ) (err error) {
 	options := sql.TxOptions{}
@@ -29,7 +28,7 @@ func Tx(
 		opt(&options)
 	}
 
-	tx, err := db.BeginTxx(ctx, &options)
+	tx, err := db.BeginTx(ctx, &options)
 	if err != nil {
 		return err
 	}
