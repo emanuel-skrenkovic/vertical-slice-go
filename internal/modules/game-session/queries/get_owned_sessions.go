@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/domain"
-	"github.com/eskrenkovic/vertical-slice-go/internal/tql"
 
+	tql "github.com/eskrenkovic/typeql"
 	"github.com/google/uuid"
 )
 

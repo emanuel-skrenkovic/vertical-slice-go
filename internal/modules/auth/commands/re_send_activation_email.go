@@ -10,9 +10,9 @@ import (
 
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/domain"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
-	"github.com/eskrenkovic/vertical-slice-go/internal/tql"
 
 	"github.com/eskrenkovic/mediator-go"
+	tql "github.com/eskrenkovic/typeql"
 	"github.com/google/uuid"
 )
 

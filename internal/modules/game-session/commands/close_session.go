@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/eskrenkovic/vertical-slice-go/internal/tql"
 
+	tql "github.com/eskrenkovic/typeql"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
 	"github.com/google/uuid"
 )

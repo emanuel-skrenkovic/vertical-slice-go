@@ -4,13 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/eskrenkovic/vertical-slice-go/internal/tql"
 	"os"
 	"path"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+
+	tql "github.com/eskrenkovic/typeql"
 )
 
 type Migration struct {

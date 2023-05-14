@@ -4,10 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/eskrenkovic/vertical-slice-go/internal/tql"
 
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/domain"
 
+	tql "github.com/eskrenkovic/typeql"
 	"github.com/google/uuid"
 )
 

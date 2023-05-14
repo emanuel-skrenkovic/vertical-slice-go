@@ -12,12 +12,12 @@ import (
 
 	"github.com/eskrenkovic/vertical-slice-go/internal/config"
 	"github.com/eskrenkovic/vertical-slice-go/internal/test"
-	"github.com/eskrenkovic/vertical-slice-go/internal/tql"
 
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/require"
 
+	tql "github.com/eskrenkovic/typeql"
 	_ "github.com/lib/pq"
 )
 

@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/eskrenkovic/vertical-slice-go/internal/tql"
 	"log"
 	"os"
 	"path"
@@ -17,6 +16,7 @@ import (
 	sqlmigration "github.com/eskrenkovic/vertical-slice-go/internal/sql-migrations"
 	"github.com/eskrenkovic/vertical-slice-go/internal/test"
 
+	tql "github.com/eskrenkovic/typeql"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/require"
 

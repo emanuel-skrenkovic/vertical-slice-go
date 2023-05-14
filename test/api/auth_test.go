@@ -9,8 +9,8 @@ import (
 
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/commands"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/domain"
-	"github.com/eskrenkovic/vertical-slice-go/internal/tql"
 
+	tql "github.com/eskrenkovic/typeql"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )

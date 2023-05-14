@@ -6,12 +6,13 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/eskrenkovic/mediator-go"
-	"github.com/eskrenkovic/vertical-slice-go/internal/tql"
 	"net/http"
 	"time"
 
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/domain"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
+
+	tql "github.com/eskrenkovic/typeql"
 )
 
 type RegisterCommand struct {
