@@ -9,7 +9,7 @@ import (
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/domain"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
 
-	tql "github.com/eskrenkovic/typeql"
+	"github.com/eskrenkovic/tql"
 )
 
 type authContextKey string

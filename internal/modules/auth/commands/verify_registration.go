@@ -11,7 +11,7 @@ import (
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
 
 	"github.com/eskrenkovic/mediator-go"
-	tql "github.com/eskrenkovic/typeql"
+	"github.com/eskrenkovic/tql"
 	"github.com/google/uuid"
 )
 

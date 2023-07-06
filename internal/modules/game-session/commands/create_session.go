@@ -7,7 +7,7 @@ import (
 
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/domain"
 
-	tql "github.com/eskrenkovic/typeql"
+	"github.com/eskrenkovic/tql"
 	"github.com/google/uuid"
 )
 

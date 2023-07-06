@@ -16,7 +16,7 @@ import (
 	sqlmigration "github.com/eskrenkovic/vertical-slice-go/internal/sql-migrations"
 	"github.com/eskrenkovic/vertical-slice-go/internal/test"
 
-	tql "github.com/eskrenkovic/typeql"
+	"github.com/eskrenkovic/tql"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/require"
 

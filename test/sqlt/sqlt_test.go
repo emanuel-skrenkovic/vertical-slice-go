@@ -17,7 +17,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/require"
 
-	tql "github.com/eskrenkovic/typeql"
+	"github.com/eskrenkovic/tql"
 	_ "github.com/lib/pq"
 )
 
