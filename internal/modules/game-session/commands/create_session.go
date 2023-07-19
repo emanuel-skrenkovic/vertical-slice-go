@@ -2,12 +2,13 @@ package commands
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/domain"
 
+	"github.com/eskrenkovic/tql"
 	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
 )
 
 type CreateSessionCommand struct {
@@ -32,10 +33,10 @@ type CreateSessionResponse struct {
 }
 
 type CreateSessionCommandHandler struct {
-	db *sqlx.DB
+	db *sql.DB
 }
 
-func NewCreateSessionCommandHandler(db *sqlx.DB) *CreateSessionCommandHandler {
+func NewCreateSessionCommandHandler(db *sql.DB) *CreateSessionCommandHandler {
 	return &CreateSessionCommandHandler{db}
 }
 
@@ -54,7 +55,7 @@ func (h *CreateSessionCommandHandler) Handle(
 		VALUES
 			(:id, :owner_id, :name);`
 
-	if _, err := h.db.NamedExecContext(ctx, stmt, session); err != nil {
+	if _, err := tql.Exec(ctx, h.db, stmt, session); err != nil {
 		return CreateSessionResponse{}, err
 	}
 

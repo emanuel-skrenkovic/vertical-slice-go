@@ -17,7 +17,7 @@ func main() {
 	if len(os.Args) > 1 {
 		rootPath := os.Args[1]
 		if rootPath == "" {
-			log.Fatal("root directoy path is empty")
+			log.Fatal("root directory path is empty")
 		}
 
 		if err := godotenv.Load(path.Join(rootPath, "config.env")); err != nil {
@@ -25,23 +25,23 @@ func main() {
 		}
 	}
 
-	config, err := config.Load()
+	conf, err := config.Load()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	server, err := server.NewHTTPServer(config)
+	srv, err := server.NewHTTPServer(conf)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if err = server.Start(); err != nil {
+	if err = srv.Start(); err != nil {
 		log.Fatal(err)
 	}
 
 	// TODO: this doesn't work.
 	defer func() {
-		if err := server.Stop(); err != nil {
+		if err := srv.Stop(); err != nil {
 			log.Fatal(err)
 		}
 	}()

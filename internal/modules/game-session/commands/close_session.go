@@ -6,10 +6,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/eskrenkovic/tql"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
 	"github.com/google/uuid"
-
-	"github.com/jmoiron/sqlx"
 )
 
 type CloseSessionCommand struct {
@@ -26,10 +25,10 @@ func (c CloseSessionCommand) Validate() error {
 }
 
 type CloseSessionCommandHandler struct {
-	db *sqlx.DB
+	db *sql.DB
 }
 
-func NewCloseSessionCommandHandler(db *sqlx.DB) *CloseSessionCommandHandler {
+func NewCloseSessionCommandHandler(db *sql.DB) *CloseSessionCommandHandler {
 	return &CloseSessionCommandHandler{db}
 }
 
@@ -42,12 +41,12 @@ func (h *CloseSessionCommandHandler) Handle(ctx context.Context, request CloseSe
 		WHERE
 			id = $1 AND owner_id == $2;`
 
-	_, err := h.db.ExecContext(ctx, stmt, request.SessionID, request.UserID)
+	_, err := tql.Exec(ctx, h.db, stmt, request.SessionID, request.UserID)
 	switch {
 	case err != nil && errors.Is(err, sql.ErrNoRows):
-		return core.Unit{}, core.NewCommandError(404, err, fmt.Sprintf("no game session with id %s found", request.SessionID))
+		return core.Unit{}, core.NewCommandError(404, err)
 	case err != nil:
-		return core.Unit{}, core.NewCommandError(500, err, "failed to execute db statement")
+		return core.Unit{}, core.NewCommandError(500, err)
 	}
 
 	return core.Unit{}, nil

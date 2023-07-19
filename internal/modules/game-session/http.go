@@ -37,12 +37,7 @@ func (h *GameSessionHTTPHandler) HandleCreateGameSession(w http.ResponseWriter, 
 		command,
 	)
 	if err != nil {
-		// TODO: don't like this at all. Needs to be a simple function call or a decorator solution.
-		statusCode := 500
-		if commandErr, ok := err.(core.CommandError); ok {
-			statusCode = commandErr.StatusCode
-		}
-		core.WriteResponse(w, r, statusCode, err)
+		core.WriteCommandError(w, r, err)
 		return
 	}
 
@@ -69,19 +64,14 @@ func (h *GameSessionHTTPHandler) HandleGetOwnedSessions(w http.ResponseWriter, r
 		queries.GetOwnedSessionsQuery{OwnerID: ownerID},
 	)
 	if err != nil {
-		// TODO: don't like this at all. Needs to be a simple function call or a decorator solution.
-		statusCode := 500
-		if commandErr, ok := err.(core.CommandError); ok {
-			statusCode = commandErr.StatusCode
-		}
-		core.WriteResponse(w, r, statusCode, err)
+		core.WriteCommandError(w, r, err)
 		return
 	}
 
 	core.WriteOK(w, r, response)
 }
 
-func (h GameSessionHTTPHandler) HandleCloseSession(w http.ResponseWriter, r *http.Request) {
+func (h *GameSessionHTTPHandler) HandleCloseSession(w http.ResponseWriter, r *http.Request) {
 	command := commands.CloseSessionCommand{
 		SessionID: chi.URLParam(r, "id"),
 		UserID:    uuid.Nil, // TODO: auth implementation required
@@ -89,12 +79,7 @@ func (h GameSessionHTTPHandler) HandleCloseSession(w http.ResponseWriter, r *htt
 
 	_, err := mediator.Send[commands.CloseSessionCommand, core.Unit](h.m, r.Context(), command)
 	if err != nil {
-		// TODO: don't like this at all. Needs to be a simple function call or a decorator solution.
-		statusCode := 500
-		if commandErr, ok := err.(core.CommandError); ok {
-			statusCode = commandErr.StatusCode
-		}
-		core.WriteResponse(w, r, statusCode, err)
+		core.WriteCommandError(w, r, err)
 		return
 	}
 

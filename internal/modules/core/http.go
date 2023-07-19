@@ -7,9 +7,11 @@ import (
 	"github.com/google/uuid"
 )
 
+type contextKey string
+
 const (
-	CorrelationIDHeader     = "Correlation-Id"
-	CorrelationIDContextKey = "correlation_id"
+	CorrelationIDHeader                = "Correlation-Id"
+	CorrelationIDContextKey contextKey = "correlation_id"
 )
 
 func CorrelationIDHTTPMiddleware(next http.Handler) http.Handler {

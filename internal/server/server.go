@@ -2,25 +2,29 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
+	"database/sql"
 	"log"
 	"net"
 	"net/http"
+	"net/smtp"
+	"strings"
 
 	"github.com/eskrenkovic/mediator-go"
+	"github.com/eskrenkovic/migrate-go"
 	"github.com/eskrenkovic/vertical-slice-go/internal/config"
+	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth"
+	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/commands"
+	authcommands "github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/commands"
+	authdomain "github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/domain"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
-
-
 	gamesession "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session"
-	gamesessiondomain "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/domain"
 	gamesessioncommands "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/commands"
+	gamesessiondomain "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/domain"
 	gamesessionqueries "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/queries"
-
-	sqlmigration "github.com/eskrenkovic/vertical-slice-go/internal/sql-migrations"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
 
@@ -31,7 +35,7 @@ type Server interface {
 
 var _ Server = &HTTPServer{}
 
-// Acts as the composition root for an application.
+// HTTPServer acts as the composition root for an application.
 type HTTPServer struct {
 	server *http.Server
 }
@@ -45,12 +49,12 @@ func NewHTTPServer(config config.Config) (Server, error) {
 		Handler: handlerWithBaseContext(baseCtx, router),
 	}
 
-	db, err := sqlx.Connect("postgres", config.DatabaseURL)
+	db, err := sql.Open("postgres", config.DatabaseURL)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := sqlmigration.Run(config.MigrationsPath, config.DatabaseURL); err != nil {
+	if err := migrate.Run(baseCtx, db, config.MigrationsPath); err != nil {
 		return nil, err
 	}
 
@@ -64,6 +68,8 @@ func NewHTTPServer(config config.Config) (Server, error) {
 	m.RegisterPipelineBehavior(&requestValidationBehavior)
 
 	// handler registration
+
+	// game-session
 
 	createGameSessionHandler := gamesessioncommands.NewCreateSessionCommandHandler(db)
 	err = mediator.RegisterRequestHandler[gamesessioncommands.CreateSessionCommand, gamesessioncommands.CreateSessionResponse](
@@ -92,6 +98,70 @@ func NewHTTPServer(config config.Config) (Server, error) {
 		return nil, err
 	}
 
+	// auth
+	authHost := config.Email.Host.Host
+	parts := strings.Split(authHost, ":")
+	if len(parts) > 1 {
+		authHost = parts[0]
+	}
+
+	smtpServerAuth := smtp.PlainAuth("", config.Email.Username, config.Email.Password, authHost)
+	emailClient := core.NewEmailClient(config.Email.Host, smtpServerAuth)
+	passwordHasher := authdomain.NewPasswordHasher(sha256.New)
+
+	loginHandler := authcommands.NewLoginCommandHandler(db, *passwordHasher)
+	err = mediator.RegisterRequestHandler[authcommands.LoginCommand, authdomain.Session](
+		m,
+		loginHandler,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	registerHandler := authcommands.NewRegisterCommandHandler(db, *passwordHasher)
+	err = mediator.RegisterRequestHandler[authcommands.RegisterCommand, core.Unit](
+		m,
+		registerHandler,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	verifyRegistrationCommandHandler := authcommands.NewVerifyRegistrationCommandHandler(db)
+	err = mediator.RegisterRequestHandler[authcommands.VerifyRegistrationCommand, core.Unit](
+		m,
+		verifyRegistrationCommandHandler,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	processActivationCodesCommandHandler := authcommands.NewProcessActivationCodesCommandHandler(
+		db,
+		emailClient,
+		commands.EmailConfiguration{Sender: config.Email.Sender},
+	)
+	err = mediator.RegisterRequestHandler[authcommands.ProcessActivationCodesCommand, core.Unit](
+		m,
+		processActivationCodesCommandHandler,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	reSendActivationEmailCommandHandler := authcommands.NewReSendActivationEmailCommandHandler(
+		db,
+		emailClient,
+		config.Email.Sender,
+	)
+	err = mediator.RegisterRequestHandler[authcommands.ReSendActivationEmailCommand, core.Unit](
+		m,
+		reSendActivationEmailCommandHandler,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	// http
 
 	// Game sessions
@@ -100,19 +170,31 @@ func NewHTTPServer(config config.Config) (Server, error) {
 	router.Group(func(r chi.Router) {
 		router.Route("/game-sessions", func(r chi.Router) {
 			r.Use(middleware.StripSlashes)
-			r.Use(middleware.Logger)
 			r.Use(middleware.RequestID)
 			r.Use(core.CorrelationIDHTTPMiddleware)
+
+			r.Use(auth.AuthenticationMiddleware(db))
 
 			r.Get("/", gameSessionEndpointHandler.HandleGetOwnedSessions)
 			r.Post("/", gameSessionEndpointHandler.HandleCreateGameSession)
 			r.Put("/{id}/actions/close", gameSessionEndpointHandler.HandleCloseSession)
 		})
+
+		router.Route("/auth", func(r chi.Router) {
+			r.Use(middleware.StripSlashes)
+			r.Use(middleware.RequestID)
+			r.Use(core.CorrelationIDHTTPMiddleware)
+
+			r.Post("/login", authcommands.HandleLogin(m))
+			r.Post("/logout", authcommands.HandleLogout)
+			r.Post("/registrations", authcommands.HandleRegistration(m))
+			r.Post("/registrations/actions/confirm", authcommands.HandleVerifyRegistration(m))
+			r.Post("/registrations/actions/publish-confirmation-emails", authcommands.HandlePublishConfirmationEmails(m))
+			r.Post("/registrations/actions/send-activation-code", authcommands.HandleReSendConfirmationEmail(m))
+		})
 	})
 
-	return &HTTPServer{
-		server: &server,
-	}, nil
+	return &HTTPServer{server: &server}, nil
 }
 
 func (s *HTTPServer) Start() error {

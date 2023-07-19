@@ -2,12 +2,13 @@ package queries
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/domain"
 
+	"github.com/eskrenkovic/tql"
 	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
 )
 
 type GetOwnedSessionsQuery struct {
@@ -23,10 +24,10 @@ func (q GetOwnedSessionsQuery) Validate() error {
 }
 
 type GetOwnedSessionsQueryHandler struct {
-	db *sqlx.DB
+	db *sql.DB
 }
 
-func NewGetOwnedSessionsQueryHandler(db *sqlx.DB) *GetOwnedSessionsQueryHandler {
+func NewGetOwnedSessionsQueryHandler(db *sql.DB) *GetOwnedSessionsQueryHandler {
 	return &GetOwnedSessionsQueryHandler{db}
 }
 
@@ -42,9 +43,9 @@ func (h *GetOwnedSessionsQueryHandler) Handle(
 		WHERE
 			owner_id = $1;`
 
-	sessions := make([]domain.Session, 0)
-	if err := h.db.SelectContext(ctx, &sessions, query, request.OwnerID); err != nil {
-		return nil, err
+	sessions, err := tql.Query[domain.Session](ctx, h.db, query, request.OwnerID)
+	if err != nil {
+		return []domain.Session{}, err
 	}
 
 	return sessions, nil

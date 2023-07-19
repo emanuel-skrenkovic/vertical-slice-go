@@ -8,6 +8,20 @@ import (
 	"go.uber.org/zap"
 )
 
+type loggingContextKey string
+
+const contextLoggerKey loggingContextKey = "context_logger"
+
+func LogError(ctx context.Context, message string, fields ...zap.Field) {
+	logger := ctx.Value(contextLoggerKey)
+	zapLogger, success := logger.(*zap.Logger)
+	if !success {
+		panic("failed to convert context logger to *zap.Logger")
+	}
+
+	zapLogger.Error(message, fields...)
+}
+
 var _ mediator.PipelineBehavior = (*RequestLoggingBehavior)(nil)
 
 type RequestLoggingBehavior struct {
