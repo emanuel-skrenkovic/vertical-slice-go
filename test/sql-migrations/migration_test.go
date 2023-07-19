@@ -5,20 +5,18 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/eskrenkovic/migrate-go"
+	"github.com/eskrenkovic/tql"
+	"github.com/eskrenkovic/vertical-slice-go/internal/config"
+	"github.com/eskrenkovic/vertical-slice-go/internal/modules/tests"
+	"github.com/joho/godotenv"
+	"github.com/stretchr/testify/require"
 	"log"
 	"os"
 	"path"
 	"strconv"
 	"strings"
 	"testing"
-
-	"github.com/eskrenkovic/vertical-slice-go/internal/config"
-	"github.com/eskrenkovic/vertical-slice-go/internal/test"
-
-	"github.com/eskrenkovic/migrate-go"
-	"github.com/eskrenkovic/tql"
-	"github.com/joho/godotenv"
-	"github.com/stretchr/testify/require"
 
 	_ "github.com/lib/pq"
 )
@@ -102,7 +100,7 @@ func TestMain(m *testing.M) {
 		log.Fatal(err)
 	}
 
-	testsTempPath := path.Join(rootPath, "test", "sql-migrations", "temp")
+	testsTempPath := path.Join(rootPath, "tests", "sql-migrations", "temp")
 	_, err = os.Stat(testsTempPath)
 	switch {
 	case err != nil && errors.Is(err, os.ErrNotExist):
@@ -118,7 +116,7 @@ func TestMain(m *testing.M) {
 		log.Fatal(err)
 	}
 
-	fixture, err := test.NewLocalTestFixture(path.Join(rootPath, "docker-compose.yml"), conf.DatabaseURL)
+	fixture, err := tests.NewLocalTestFixture(path.Join(rootPath, "docker-compose.yml"), conf.DatabaseURL)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -310,5 +308,5 @@ func getMigrations(t *testing.T, db *sql.DB) []migrate.Migration {
 }
 
 func migrationPath(t *testing.T) string {
-	return path.Join(rootPath, "test", "sql-migrations", "temp", t.Name())
+	return path.Join(rootPath, "tests", "sql-migrations", "temp", t.Name())
 }

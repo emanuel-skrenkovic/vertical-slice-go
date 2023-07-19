@@ -22,9 +22,9 @@ func Test_Send_Sends_Email_To_Server(t *testing.T) {
 	m := core.MailMessage{
 		Subject:    "I am the subject of an email",
 		From:       "hello@gmail.com",
-		To:         []string{"test@@test.com", "test.testersson@mail.com"},
-		Cc:         []string{"test.testersson@test.com"},
-		Bcc:        []string{"test@test.test"},
+		To:         []string{"tests@@tests.com", "tests.testersson@mail.com"},
+		Cc:         []string{"tests.testersson@tests.com"},
+		Bcc:        []string{"tests@tests.tests"},
 		BodyString: "<html><b>HI THERE</b></html>",
 		IsHTML:     true,
 	}

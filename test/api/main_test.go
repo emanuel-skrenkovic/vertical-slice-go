@@ -4,19 +4,17 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/eskrenkovic/vertical-slice-go/internal/config"
+	"github.com/eskrenkovic/vertical-slice-go/internal/modules/tests"
+	"github.com/eskrenkovic/vertical-slice-go/internal/server"
+	"github.com/joho/godotenv"
+	"go.uber.org/zap"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
 	"testing"
-
-	"github.com/eskrenkovic/vertical-slice-go/internal/config"
-	"github.com/eskrenkovic/vertical-slice-go/internal/server"
-	"github.com/eskrenkovic/vertical-slice-go/internal/test"
-
-	"github.com/joho/godotenv"
-	"go.uber.org/zap"
 )
 
 type IntegrationTestFixture struct {
@@ -67,7 +65,7 @@ func TestMain(m *testing.M) {
 
 	conf.Logger = zap.NewNop()
 
-	fixture, err := test.NewLocalTestFixture(path.Join(rootPath, "docker-compose.yml"), conf.DatabaseURL)
+	fixture, err := tests.NewLocalTestFixture(path.Join(rootPath, "docker-compose.yml"), conf.DatabaseURL)
 	if err != nil {
 		log.Fatal(err)
 	}

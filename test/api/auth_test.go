@@ -18,7 +18,7 @@ import (
 func Test_Register_Registers_New_User_When_Email_Unique(t *testing.T) {
 	// Arrange
 	command := commands.RegisterCommand{
-		Email:    fmt.Sprintf("%s@test.com", uuid.New().String()),
+		Email:    fmt.Sprintf("%s@tests.com", uuid.New().String()),
 		Username: uuid.New().String(),
 		Password: uuid.New().String(),
 	}
@@ -68,7 +68,7 @@ func Test_Register_Does_Not_Create_Another_User_When_Username_Exists(t *testing.
 	// Arrange
 	username := uuid.New().String()
 	command1 := commands.RegisterCommand{
-		Email:    fmt.Sprintf("%s@test.com", uuid.New().String()),
+		Email:    fmt.Sprintf("%s@tests.com", uuid.New().String()),
 		Username: username,
 		Password: uuid.New().String(),
 	}
@@ -83,7 +83,7 @@ func Test_Register_Does_Not_Create_Another_User_When_Username_Exists(t *testing.
 	require.NoError(t, err)
 
 	command := commands.RegisterCommand{
-		Email:    fmt.Sprintf("%s@test.com", uuid.New().String()),
+		Email:    fmt.Sprintf("%s@tests.com", uuid.New().String()),
 		Username: username,
 		Password: uuid.New().String(),
 	}
@@ -142,7 +142,7 @@ func Test_Register_Does_Not_Create_Another_User_When_Username_Exists(t *testing.
 
 func Test_Register_Does_Not_Create_Another_User_When_Email_Exists(t *testing.T) {
 	// Arrange
-	email := fmt.Sprintf("%s@test.com", uuid.New().String())
+	email := fmt.Sprintf("%s@tests.com", uuid.New().String())
 	command1 := commands.RegisterCommand{
 		Email:    email,
 		Username: uuid.New().String(),
@@ -192,7 +192,7 @@ func Test_Register_Does_Not_Create_Another_User_When_Email_Exists(t *testing.T) 
 func Test_ProcessActivationCodes_Updates_ActivationCode_On_Send(t *testing.T) {
 	// Arrange
 	registerUserCommand := commands.RegisterCommand{
-		Email:    "test@test.com",
+		Email:    "tests@tests.com",
 		Username: uuid.New().String(),
 		Password: uuid.New().String(),
 	}
@@ -234,7 +234,7 @@ func Test_ProcessActivationCodes_Updates_ActivationCode_On_Send(t *testing.T) {
 func Test_SendActivationCode_Creates_New_ActivationCode(t *testing.T) {
 	// Arrange
 	registerUserCommand := commands.RegisterCommand{
-		Email:    fmt.Sprintf("%s@test.com", uuid.NewString()),
+		Email:    fmt.Sprintf("%s@tests.com", uuid.NewString()),
 		Username: uuid.New().String(),
 		Password: uuid.New().String(),
 	}
@@ -296,7 +296,7 @@ func Test_SendActivationCode_Creates_New_ActivationCode(t *testing.T) {
 func Test_VerifyRegistration_Returns_Error_When_ActivationCode_Is_Invalid(t *testing.T) {
 	// Arrange
 	registerUserCommand := commands.RegisterCommand{
-		Email:    fmt.Sprintf("%s@test.com", uuid.NewString()),
+		Email:    fmt.Sprintf("%s@tests.com", uuid.NewString()),
 		Username: uuid.New().String(),
 		Password: uuid.New().String(),
 	}
@@ -359,7 +359,7 @@ func Test_VerifyRegistration_Returns_Error_When_ActivationCode_Is_Invalid(t *tes
 func Test_Login_With_Valid_Password_Succeeds(t *testing.T) {
 	// Arrange
 	registerUserCommand := commands.RegisterCommand{
-		Email:    fmt.Sprintf("%s@test.com", uuid.NewString()),
+		Email:    fmt.Sprintf("%s@tests.com", uuid.NewString()),
 		Username: uuid.New().String(),
 		Password: uuid.New().String(),
 	}

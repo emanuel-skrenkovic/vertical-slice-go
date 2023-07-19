@@ -1,6 +1,6 @@
 package main
 
-//func Test_CreateSessionCommand_Creates_New_Session_For_User(t *testing.T) {
+//func Test_CreateSessionCommand_Creates_New_Session_For_User(t *tests.T) {
 //	// Arrange
 //	createGameSessionCommand := commands.CreateSessionCommand{
 //		OwnerID: uuid.New(),
@@ -27,7 +27,7 @@ package main
 //	require.NotEmpty(t, location)
 //}
 //
-//func Test_CreateSessionCommand_Creates_Returns_400_When_OwnerID_Invalid(t *testing.T) {
+//func Test_CreateSessionCommand_Creates_Returns_400_When_OwnerID_Invalid(t *tests.T) {
 //	// Arrange
 //	createGameSessionCommand := commands.CreateSessionCommand{
 //		OwnerID: uuid.Nil,
@@ -54,7 +54,7 @@ package main
 //	require.Empty(t, location)
 //}
 //
-//func Test_CreateSessionCommand_Creates_Returns_400_When_Name_Empty(t *testing.T) {
+//func Test_CreateSessionCommand_Creates_Returns_400_When_Name_Empty(t *tests.T) {
 //	// Arrange
 //	createGameSessionCommand := commands.CreateSessionCommand{
 //		OwnerID: uuid.New(),
@@ -81,7 +81,7 @@ package main
 //	require.Empty(t, location)
 //}
 //
-//func Test_GetOwnedSessions_Returns_Empty_List_If_No_Active_Owned_Sessions(t *testing.T) {
+//func Test_GetOwnedSessions_Returns_Empty_List_If_No_Active_Owned_Sessions(t *tests.T) {
 //	// Act
 //	resp, err := fixture.client.Get(
 //		fmt.Sprintf("%s%s?ownerId=%s", fixture.baseURL, "/game-sessions", uuid.New().String()),
@@ -103,7 +103,7 @@ package main
 //	require.Equal(t, 0, len(response))
 //}
 //
-//func Test_GetOwnedSessions_Returns_Sessions_Owned_By_User(t *testing.T) {
+//func Test_GetOwnedSessions_Returns_Sessions_Owned_By_User(t *tests.T) {
 //	// Arrange
 //
 //	count := 5

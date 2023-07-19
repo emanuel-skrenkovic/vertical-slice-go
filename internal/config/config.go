@@ -1,10 +1,10 @@
 package config
 
 import (
+	"github.com/eskrenkovic/vertical-slice-go/internal/modules/env"
 	"net/url"
 	"path"
 
-	"github.com/eskrenkovic/vertical-slice-go/internal/env"
 	"go.uber.org/zap"
 )
 
