@@ -2,14 +2,12 @@ package tests
 
 import (
 	"fmt"
-	"log"
-	"os"
-	"strings"
-
 	"github.com/docker/go-connections/nat"
 	"github.com/google/uuid"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"os"
+	"strings"
 )
 
 type LocalTestFixture struct {
@@ -18,10 +16,7 @@ type LocalTestFixture struct {
 }
 
 func NewLocalTestFixture(dockerComposePath string, dbURL string) (LocalTestFixture, error) {
-	compose := testcontainers.NewLocalDockerCompose(
-		[]string{dockerComposePath},
-		uuid.New().String(),
-	)
+	compose := testcontainers.NewLocalDockerCompose([]string{dockerComposePath}, uuid.New().String())
 
 	for serviceName := range compose.Services {
 		if strings.Contains(serviceName, "postgres") {
@@ -34,6 +29,15 @@ func NewLocalTestFixture(dockerComposePath string, dbURL string) (LocalTestFixtu
 					return dbURL
 				}),
 			)
+		} else if strings.Contains(serviceName, "mailhog") {
+			port := 8025
+			compose.WithExposedService(
+				serviceName,
+				port,
+				wait.
+					ForHTTP("").
+					WithPort(nat.Port(fmt.Sprintf("%d", port))),
+			)
 		}
 	}
 
@@ -44,7 +48,6 @@ func NewLocalTestFixture(dockerComposePath string, dbURL string) (LocalTestFixtu
 }
 
 func (f *LocalTestFixture) Start() error {
-	log.Println(os.Getenv("SKIP_INFRASTRUCTURE"))
 	if skip := os.Getenv("SKIP_INFRASTRUCTURE"); skip == "true" {
 		return nil
 	}
