@@ -13,9 +13,9 @@ import (
 	"testing"
 
 	"github.com/eskrenkovic/vertical-slice-go/internal/config"
-	sqlmigration "github.com/eskrenkovic/vertical-slice-go/internal/sql-migrations"
 	"github.com/eskrenkovic/vertical-slice-go/internal/test"
 
+	"github.com/eskrenkovic/migrate-go"
 	"github.com/eskrenkovic/tql"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/require"
@@ -163,7 +163,7 @@ func Test_Applies_All_Migrations_In_Directory(t *testing.T) {
 	createMigrationFile(t, "dependant_table", dependentTableUpMigration, dependentTableDownMigration)
 
 	// Act
-	err := sqlmigration.Run(testMigrationsPath, conf.DatabaseURL)
+	err := migrate.Run(context.Background(), db, testMigrationsPath)
 
 	// Assert
 	require.NoError(t, err)
@@ -185,12 +185,12 @@ func Test_Applied_Migrations_From_Directory_After_Already_Applied_Version(t *tes
 	createMigrationFile(t, "main_table", mainTableUpMigration, mainTableDownMigration)
 	createMigrationFile(t, "dependant_table", dependentTableUpMigration, dependentTableDownMigration)
 
-	err := sqlmigration.Run(testMigrationsPath, conf.DatabaseURL)
+	err := migrate.Run(context.Background(), db, testMigrationsPath)
 	require.NoError(t, err)
 
 	// Act
 	createMigrationFile(t, "main_table2", mainTable2UpMigration, mainTable2DownMigration)
-	err = sqlmigration.Run(testMigrationsPath, conf.DatabaseURL)
+	err = migrate.Run(context.Background(), db, testMigrationsPath)
 
 	// Assert
 	require.NoError(t, err)
@@ -215,7 +215,7 @@ func Test_Reverts_All_Attempted_Migrations_On_Failed_Migration_Attempt(t *testin
 
 	// Act
 	createMigrationFile(t, "main_table2", "invalid", "SELECT 1;")
-	err := sqlmigration.Run(testMigrationsPath, conf.DatabaseURL)
+	err := migrate.Run(context.Background(), db, testMigrationsPath)
 
 	// Assert
 	require.Error(t, err)
@@ -235,13 +235,13 @@ func Test_Reverts_All_Attempted_Migrations_On_Failed_Migration_Attempt_Leaving_P
 	}()
 
 	createMigrationFile(t, "main_table", mainTableUpMigration, mainTableDownMigration)
-	err := sqlmigration.Run(testMigrationsPath, conf.DatabaseURL)
+	err := migrate.Run(context.Background(), db, testMigrationsPath)
 	require.NoError(t, err)
 
 	// Act
 	createMigrationFile(t, "dependant_table", dependentTableUpMigration, dependentTableDownMigration)
 	createMigrationFile(t, "main_table2", "invalid", "SELECT 1;")
-	err = sqlmigration.Run(testMigrationsPath, conf.DatabaseURL)
+	err = migrate.Run(context.Background(), db, testMigrationsPath)
 
 	// Assert
 	require.Error(t, err)
@@ -303,8 +303,8 @@ func getMigrationVersion(t *testing.T) int {
 	return highestVersion + 1
 }
 
-func getMigrations(t *testing.T, db *sql.DB) []sqlmigration.Migration {
-	m, err := tql.Query[sqlmigration.Migration](context.Background(), db, "SELECT * FROM schema_migration;")
+func getMigrations(t *testing.T, db *sql.DB) []migrate.Migration {
+	m, err := tql.Query[migrate.Migration](context.Background(), db, "SELECT * FROM schema_migration;")
 	require.NoError(t, err)
 	return m
 }

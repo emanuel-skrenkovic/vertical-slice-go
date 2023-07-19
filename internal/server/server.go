@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/eskrenkovic/mediator-go"
+	"github.com/eskrenkovic/migrate-go"
 	"github.com/eskrenkovic/vertical-slice-go/internal/config"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/commands"
@@ -21,7 +22,6 @@ import (
 	gamesessioncommands "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/commands"
 	gamesessiondomain "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/domain"
 	gamesessionqueries "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/queries"
-	sqlmigration "github.com/eskrenkovic/vertical-slice-go/internal/sql-migrations"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -54,7 +54,7 @@ func NewHTTPServer(config config.Config) (Server, error) {
 		return nil, err
 	}
 
-	if err := sqlmigration.Run(config.MigrationsPath, config.DatabaseURL); err != nil {
+	if err := migrate.Run(baseCtx, db, config.MigrationsPath); err != nil {
 		return nil, err
 	}
 

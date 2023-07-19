@@ -13,7 +13,7 @@ lint:
 .PHONY: test
 test:
 	go test -v -count=1 ./test/api...
-	go test -v -count=1 -timeout=5s ./test/sql-migrations/...
+	go test -v -count=1 -timeout=5s 
 
 .PHONY: docker-build
 docker-build:
