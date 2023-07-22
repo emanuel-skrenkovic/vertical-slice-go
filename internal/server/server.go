@@ -98,6 +98,15 @@ func NewHTTPServer(config config.Config) (Server, error) {
 		return nil, err
 	}
 
+	createSessionInvitationHandler := gamesessioncommands.NewCreateSessionInvitationCommandHandler(db)
+	err = mediator.RegisterRequestHandler[gamesessioncommands.CreateSessionInvitationCommand, core.Unit](
+		m,
+		createSessionInvitationHandler,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	// auth
 	authHost := config.Email.Host.Host
 	parts := strings.Split(authHost, ":")
@@ -177,7 +186,9 @@ func NewHTTPServer(config config.Config) (Server, error) {
 
 			r.Get("/", gameSessionEndpointHandler.HandleGetOwnedSessions)
 			r.Post("/", gameSessionEndpointHandler.HandleCreateGameSession)
-			r.Put("/{id}/actions/close", gameSessionEndpointHandler.HandleCloseSession)
+			r.Put("/{id}/actions/close", gamesessioncommands.HandleCloseSession(m))
+
+			r.Post("/{id}/invitations", gamesessioncommands.HandleCreateSessionInvitation(m))
 		})
 
 		router.Route("/auth", func(r chi.Router) {

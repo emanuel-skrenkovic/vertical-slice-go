@@ -12,10 +12,6 @@ import (
 	"github.com/eskrenkovic/tql"
 )
 
-type authContextKey string
-
-const sessionContextKey authContextKey = "session"
-
 func AuthenticationMiddleware(db *sql.DB) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -48,7 +44,7 @@ func AuthenticationMiddleware(db *sql.DB) func(http.Handler) http.Handler {
 				return
 			}
 
-			authContext := context.WithValue(r.Context(), sessionContextKey, session)
+			authContext := context.WithValue(r.Context(), core.SessionContextKey, session)
 			next.ServeHTTP(w, r.WithContext(authContext))
 		})
 	}

@@ -1,6 +1,10 @@
 package domain
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type Session struct {
 	ID        string    `db:"id"`
@@ -10,6 +14,16 @@ type Session struct {
 	GameID    uuid.UUID `db:"game_id"`
 	Active    bool      `db:"active"`
 	Name      string    `db:"name"`
+}
+
+type SessionInvitation struct {
+	ID        uuid.UUID `db:"id"`
+	SessionID string    `db:"session_id"`
+
+	InviterID uuid.UUID `db:"inviter_id"`
+	InviteeID uuid.UUID `db:"invitee_id"`
+
+	CreatedAt time.Time `db:"created_at"`
 }
 
 // Create session +

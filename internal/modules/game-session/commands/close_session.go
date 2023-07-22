@@ -5,9 +5,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/http"
 
-	"github.com/eskrenkovic/tql"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
+
+	"github.com/eskrenkovic/mediator-go"
+	"github.com/eskrenkovic/tql"
+	"github.com/go-chi/chi"
 	"github.com/google/uuid"
 )
 
@@ -24,6 +28,25 @@ func (c CloseSessionCommand) Validate() error {
 	return nil
 }
 
+func HandleCloseSession(m *mediator.Mediator) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		command := CloseSessionCommand{
+			SessionID: chi.URLParam(r, "id"),
+			UserID:    core.Session(ctx).UserID, // TODO: auth implementation required
+		}
+
+		_, err := mediator.Send[CloseSessionCommand, core.Unit](m, ctx, command)
+		if err != nil {
+			core.WriteCommandError(w, r, err)
+			return
+		}
+
+		core.WriteOK(w, r, nil)
+	}
+}
+
 type CloseSessionCommandHandler struct {
 	db *sql.DB
 }
@@ -33,15 +56,33 @@ func NewCloseSessionCommandHandler(db *sql.DB) *CloseSessionCommandHandler {
 }
 
 func (h *CloseSessionCommandHandler) Handle(ctx context.Context, request CloseSessionCommand) (core.Unit, error) {
-	const stmt = `
-		UPDATE
-			game_session
-		SET
-			active = false
-		WHERE
-			id = $1 AND owner_id == $2;`
+	// TODO: needs to cancel all open invitations as well.
 
-	_, err := tql.Exec(ctx, h.db, stmt, request.SessionID, request.UserID)
+	txFn := func(context.Context, *sql.Tx) error {
+		const stmt = `
+			UPDATE
+				game_session
+			SET
+				active = false
+			WHERE
+				id = $1 AND owner_id == $2;`
+
+		if _, err := tql.Exec(ctx, h.db, stmt, request.SessionID, request.UserID); err != nil {
+			return err
+		}
+
+		const invitationStmt = `
+			UPDATE
+				session_invitations
+			SET
+				active = false
+			WHERE
+				session_id = $1;`
+		_, err := tql.Exec(ctx, h.db, invitationStmt, request.SessionID)
+		return err
+	}
+
+	err := core.Tx(ctx, h.db, txFn)
 	switch {
 	case err != nil && errors.Is(err, sql.ErrNoRows):
 		return core.Unit{}, core.NewCommandError(404, err)

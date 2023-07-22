@@ -7,7 +7,6 @@ import (
 
 	"github.com/eskrenkovic/mediator-go"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
-	"github.com/go-chi/chi"
 
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/commands"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/domain"
@@ -69,19 +68,4 @@ func (h *GameSessionHTTPHandler) HandleGetOwnedSessions(w http.ResponseWriter, r
 	}
 
 	core.WriteOK(w, r, response)
-}
-
-func (h *GameSessionHTTPHandler) HandleCloseSession(w http.ResponseWriter, r *http.Request) {
-	command := commands.CloseSessionCommand{
-		SessionID: chi.URLParam(r, "id"),
-		UserID:    uuid.Nil, // TODO: auth implementation required
-	}
-
-	_, err := mediator.Send[commands.CloseSessionCommand, core.Unit](h.m, r.Context(), command)
-	if err != nil {
-		core.WriteCommandError(w, r, err)
-		return
-	}
-
-	core.WriteOK(w, r, nil)
 }

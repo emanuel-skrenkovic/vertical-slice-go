@@ -42,11 +42,5 @@ func (h *GetOwnedSessionsQueryHandler) Handle(
 			game_session
 		WHERE
 			owner_id = $1;`
-
-	sessions, err := tql.Query[domain.Session](ctx, h.db, query, request.OwnerID)
-	if err != nil {
-		return []domain.Session{}, err
-	}
-
-	return sessions, nil
+	return tql.Query[domain.Session](ctx, h.db, query, request.OwnerID)
 }

@@ -45,16 +45,15 @@ func (h *CreateSessionCommandHandler) Handle(
 	request CreateSessionCommand,
 ) (CreateSessionResponse, error) {
 	session := domain.Session{
-		ID:      uuid.New().String(),
+		ID:      uuid.NewString(),
 		OwnerID: request.OwnerID,
 	}
 
 	const stmt = `
 		INSERT INTO
-			game_session(id, owner_id, name)
+			game_session (id, owner_id, name)
 		VALUES
 			(:id, :owner_id, :name);`
-
 	if _, err := tql.Exec(ctx, h.db, stmt, session); err != nil {
 		return CreateSessionResponse{}, err
 	}
