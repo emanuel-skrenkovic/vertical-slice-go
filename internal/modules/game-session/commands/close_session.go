@@ -55,9 +55,10 @@ func NewCloseSessionCommandHandler(db *sql.DB) *CloseSessionCommandHandler {
 	return &CloseSessionCommandHandler{db}
 }
 
-func (h *CloseSessionCommandHandler) Handle(ctx context.Context, request CloseSessionCommand) (core.Unit, error) {
-	// TODO: needs to cancel all open invitations as well.
-
+func (h *CloseSessionCommandHandler) Handle(
+	ctx context.Context,
+	request CloseSessionCommand,
+) (core.Unit, error) {
 	txFn := func(context.Context, *sql.Tx) error {
 		const stmt = `
 			UPDATE

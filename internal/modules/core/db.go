@@ -3,9 +3,8 @@ package core
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
-
-	"github.com/pkg/errors"
 )
 
 type TransactionOption func(*sql.TxOptions)
@@ -35,10 +34,10 @@ func Tx(
 
 	defer func() {
 		if r := recover(); r != nil {
+			err = errors.Join(fmt.Errorf("transaction panicked with: %v", r), err)
+
 			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				err = errors.Wrapf(err, "%v", r)
-			} else {
-				err = fmt.Errorf("transaction panicked with: %v", r)
+				err = errors.Join(rollbackErr, err)
 			}
 		}
 	}()
@@ -46,7 +45,7 @@ func Tx(
 	err = transaction(ctx, tx)
 	if err != nil {
 		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return fmt.Errorf("%s: %w", rollbackErr.Error(), err)
+			return errors.Join(rollbackErr, err)
 		}
 
 		return err
@@ -55,7 +54,7 @@ func Tx(
 	err = tx.Commit()
 	if err != nil {
 		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return fmt.Errorf("%s: %w", rollbackErr.Error(), err)
+			return errors.Join(rollbackErr, err)
 		}
 
 		return err
