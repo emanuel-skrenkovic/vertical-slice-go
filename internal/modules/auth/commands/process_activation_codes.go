@@ -22,20 +22,17 @@ type EmailConfiguration struct {
 
 type ProcessActivationCodesCommand struct{}
 
-func HandlePublishConfirmationEmails(m *mediator.Mediator) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		_, err := mediator.Send[ProcessActivationCodesCommand, core.Unit](
-			m,
-			r.Context(),
-			ProcessActivationCodesCommand{},
-		)
-		if err != nil {
-			core.WriteCommandError(w, r, err)
-			return
-		}
-
-		core.WriteOK(w, r, nil)
+func HandlePublishConfirmationEmails(w http.ResponseWriter, r *http.Request) {
+	_, err := mediator.Send[ProcessActivationCodesCommand, core.Unit](
+		r.Context(),
+		ProcessActivationCodesCommand{},
+	)
+	if err != nil {
+		core.WriteCommandError(w, r, err)
+		return
 	}
+
+	core.WriteOK(w, r, nil)
 }
 
 type ProcessActivationCodesCommandHandler struct {

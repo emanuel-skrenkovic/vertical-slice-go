@@ -28,21 +28,19 @@ func (c ReSendActivationEmailCommand) Validate() error {
 	return nil
 }
 
-func HandleReSendConfirmationEmail(m *mediator.Mediator) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		command, err := core.RequestBody[ReSendActivationEmailCommand](r)
-		if err != nil {
-			core.WriteBadRequest(w, r, err)
-			return
-		}
-
-		if _, err := mediator.Send[ReSendActivationEmailCommand, core.Unit](m, r.Context(), command); err != nil {
-			core.WriteCommandError(w, r, err)
-			return
-		}
-
-		core.WriteOK(w, r, nil)
+func HandleReSendConfirmationEmail(w http.ResponseWriter, r *http.Request) {
+	command, err := core.RequestBody[ReSendActivationEmailCommand](r)
+	if err != nil {
+		core.WriteBadRequest(w, r, err)
+		return
 	}
+
+	if _, err := mediator.Send[ReSendActivationEmailCommand, core.Unit](r.Context(), command); err != nil {
+		core.WriteCommandError(w, r, err)
+		return
+	}
+
+	core.WriteOK(w, r, nil)
 }
 
 type ReSendActivationEmailCommandHandler struct {

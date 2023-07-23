@@ -18,7 +18,6 @@ import (
 	authcommands "github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/commands"
 	authdomain "github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/domain"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
-	gamesession "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session"
 	gamesessioncommands "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/commands"
 	gamesessiondomain "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/domain"
 	gamesessionqueries "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/queries"
@@ -62,10 +61,9 @@ func NewHTTPServer(config config.Config) (Server, error) {
 	handlerErrorLoggingBehavior := core.HandlerErrorLoggingBehavior{Logger: config.Logger}
 	requestValidationBehavior := core.RequestValidationBehavior{}
 
-	m := mediator.NewMediator()
-	m.RegisterPipelineBehavior(&requestLoggingBehavior)
-	m.RegisterPipelineBehavior(&handlerErrorLoggingBehavior)
-	m.RegisterPipelineBehavior(&requestValidationBehavior)
+	mediator.RegisterPipelineBehavior(&requestLoggingBehavior)
+	mediator.RegisterPipelineBehavior(&handlerErrorLoggingBehavior)
+	mediator.RegisterPipelineBehavior(&requestValidationBehavior)
 
 	// handler registration
 
@@ -73,7 +71,6 @@ func NewHTTPServer(config config.Config) (Server, error) {
 
 	createGameSessionHandler := gamesessioncommands.NewCreateSessionCommandHandler(db)
 	err = mediator.RegisterRequestHandler[gamesessioncommands.CreateSessionCommand, gamesessioncommands.CreateSessionResponse](
-		m,
 		createGameSessionHandler,
 	)
 	if err != nil {
@@ -82,7 +79,6 @@ func NewHTTPServer(config config.Config) (Server, error) {
 
 	closeSessionHandler := gamesessioncommands.NewCloseSessionCommandHandler(db)
 	err = mediator.RegisterRequestHandler[gamesessioncommands.CloseSessionCommand, core.Unit](
-		m,
 		closeSessionHandler,
 	)
 	if err != nil {
@@ -91,7 +87,6 @@ func NewHTTPServer(config config.Config) (Server, error) {
 
 	getOwnedSessionsHandler := gamesessionqueries.NewGetOwnedSessionsQueryHandler(db)
 	err = mediator.RegisterRequestHandler[gamesessionqueries.GetOwnedSessionsQuery, []gamesessiondomain.Session](
-		m,
 		getOwnedSessionsHandler,
 	)
 	if err != nil {
@@ -100,7 +95,6 @@ func NewHTTPServer(config config.Config) (Server, error) {
 
 	createSessionInvitationHandler := gamesessioncommands.NewCreateSessionInvitationCommandHandler(db)
 	err = mediator.RegisterRequestHandler[gamesessioncommands.CreateSessionInvitationCommand, core.Unit](
-		m,
 		createSessionInvitationHandler,
 	)
 	if err != nil {
@@ -120,7 +114,6 @@ func NewHTTPServer(config config.Config) (Server, error) {
 
 	loginHandler := authcommands.NewLoginCommandHandler(db, *passwordHasher)
 	err = mediator.RegisterRequestHandler[authcommands.LoginCommand, authdomain.Session](
-		m,
 		loginHandler,
 	)
 	if err != nil {
@@ -129,7 +122,6 @@ func NewHTTPServer(config config.Config) (Server, error) {
 
 	registerHandler := authcommands.NewRegisterCommandHandler(db, *passwordHasher)
 	err = mediator.RegisterRequestHandler[authcommands.RegisterCommand, core.Unit](
-		m,
 		registerHandler,
 	)
 	if err != nil {
@@ -138,7 +130,6 @@ func NewHTTPServer(config config.Config) (Server, error) {
 
 	verifyRegistrationCommandHandler := authcommands.NewVerifyRegistrationCommandHandler(db)
 	err = mediator.RegisterRequestHandler[authcommands.VerifyRegistrationCommand, core.Unit](
-		m,
 		verifyRegistrationCommandHandler,
 	)
 	if err != nil {
@@ -151,7 +142,6 @@ func NewHTTPServer(config config.Config) (Server, error) {
 		commands.EmailConfiguration{Sender: config.Email.Sender},
 	)
 	err = mediator.RegisterRequestHandler[authcommands.ProcessActivationCodesCommand, core.Unit](
-		m,
 		processActivationCodesCommandHandler,
 	)
 	if err != nil {
@@ -164,7 +154,6 @@ func NewHTTPServer(config config.Config) (Server, error) {
 		config.Email.Sender,
 	)
 	err = mediator.RegisterRequestHandler[authcommands.ReSendActivationEmailCommand, core.Unit](
-		m,
 		reSendActivationEmailCommandHandler,
 	)
 	if err != nil {
@@ -172,9 +161,6 @@ func NewHTTPServer(config config.Config) (Server, error) {
 	}
 
 	// http
-
-	// Game sessions
-	gameSessionEndpointHandler := gamesession.NewGameSessionHTTPHandler(m)
 
 	router.Group(func(r chi.Router) {
 		router.Route("/game-sessions", func(r chi.Router) {
@@ -184,11 +170,13 @@ func NewHTTPServer(config config.Config) (Server, error) {
 
 			r.Use(auth.AuthenticationMiddleware(db))
 
-			r.Get("/", gameSessionEndpointHandler.HandleGetOwnedSessions)
-			r.Post("/", gameSessionEndpointHandler.HandleCreateGameSession)
-			r.Put("/{id}/actions/close", gamesessioncommands.HandleCloseSession(m))
+			r.Get("/", gamesessionqueries.HandleGetOwnedSessions)
+			r.Post("/", gamesessioncommands.HandleCreateGameSession)
 
-			r.Post("/{id}/invitations", gamesessioncommands.HandleCreateSessionInvitation(m))
+			r.Post("/{id}/invitations", gamesessioncommands.HandleCreateSessionInvitation)
+
+			r.Put("/{id}/actions/close", gamesessioncommands.HandleCloseSession)
+			r.Put("/{id}/actions/join", gamesessioncommands.HandleJoinSession)
 		})
 
 		router.Route("/auth", func(r chi.Router) {
@@ -196,12 +184,12 @@ func NewHTTPServer(config config.Config) (Server, error) {
 			r.Use(middleware.RequestID)
 			r.Use(core.CorrelationIDHTTPMiddleware)
 
-			r.Post("/login", authcommands.HandleLogin(m))
+			r.Post("/login", authcommands.HandleLogin)
 			r.Post("/logout", authcommands.HandleLogout)
-			r.Post("/registrations", authcommands.HandleRegistration(m))
-			r.Post("/registrations/actions/confirm", authcommands.HandleVerifyRegistration(m))
-			r.Post("/registrations/actions/publish-confirmation-emails", authcommands.HandlePublishConfirmationEmails(m))
-			r.Post("/registrations/actions/send-activation-code", authcommands.HandleReSendConfirmationEmail(m))
+			r.Post("/registrations", authcommands.HandleRegistration)
+			r.Post("/registrations/actions/confirm", authcommands.HandleVerifyRegistration)
+			r.Post("/registrations/actions/publish-confirmation-emails", authcommands.HandlePublishConfirmationEmails)
+			r.Post("/registrations/actions/send-activation-code", authcommands.HandleReSendConfirmationEmail)
 		})
 	})
 

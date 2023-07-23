@@ -30,31 +30,29 @@ func (c LoginCommand) Validate() error {
 	return nil
 }
 
-func HandleLogin(m *mediator.Mediator) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// TODO: session cookie
-		command, err := core.RequestBody[LoginCommand](r)
-		if err != nil {
-			core.WriteBadRequest(w, r, err)
-			return
-		}
-
-		session, err := mediator.Send[LoginCommand, domain.Session](m, r.Context(), command)
-		if err != nil {
-			core.WriteCommandError(w, r, err)
-			return
-		}
-
-		sessionCookie := http.Cookie{
-			Name:    "chess-session",
-			Value:   session.ID.String(),
-			Path:    "/",
-			Expires: session.ExpiresAtUTC, // TODO: does this need to be local time?
-		}
-
-		http.SetCookie(w, &sessionCookie)
-		core.WriteOK(w, r, nil)
+func HandleLogin(w http.ResponseWriter, r *http.Request) {
+	// TODO: session cookie
+	command, err := core.RequestBody[LoginCommand](r)
+	if err != nil {
+		core.WriteBadRequest(w, r, err)
+		return
 	}
+
+	session, err := mediator.Send[LoginCommand, domain.Session](r.Context(), command)
+	if err != nil {
+		core.WriteCommandError(w, r, err)
+		return
+	}
+
+	sessionCookie := http.Cookie{
+		Name:    "chess-session",
+		Value:   session.ID.String(),
+		Path:    "/",
+		Expires: session.ExpiresAtUTC, // TODO: does this need to be local time?
+	}
+
+	http.SetCookie(w, &sessionCookie)
+	core.WriteOK(w, r, nil)
 }
 
 type LoginCommandHandler struct {

@@ -37,22 +37,20 @@ func (c CreateSessionInvitationCommand) Validate() error {
 	return nil
 }
 
-func HandleCreateSessionInvitation(m *mediator.Mediator) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		command, err := core.RequestBody[CreateSessionInvitationCommand](r)
-		if err != nil {
-			core.WriteBadRequest(w, r, err)
-		}
-		command.SessionID = chi.URLParam(r, "id")
-
-		_, err = mediator.Send[CreateSessionInvitationCommand, core.Unit](m, r.Context(), command)
-		if err != nil {
-			core.WriteCommandError(w, r, err)
-			return
-		}
-
-		core.WriteOK(w, r, nil)
+func HandleCreateSessionInvitation(w http.ResponseWriter, r *http.Request) {
+	command, err := core.RequestBody[CreateSessionInvitationCommand](r)
+	if err != nil {
+		core.WriteBadRequest(w, r, err)
 	}
+	command.SessionID = chi.URLParam(r, "id")
+
+	_, err = mediator.Send[CreateSessionInvitationCommand, core.Unit](r.Context(), command)
+	if err != nil {
+		core.WriteCommandError(w, r, err)
+		return
+	}
+
+	core.WriteOK(w, r, nil)
 }
 
 type CreateSessionInvitationCommandHandler struct {

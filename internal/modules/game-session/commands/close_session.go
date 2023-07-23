@@ -28,23 +28,21 @@ func (c CloseSessionCommand) Validate() error {
 	return nil
 }
 
-func HandleCloseSession(m *mediator.Mediator) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+func HandleCloseSession(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
-		command := CloseSessionCommand{
-			SessionID: chi.URLParam(r, "id"),
-			UserID:    core.Session(ctx).UserID, // TODO: auth implementation required
-		}
-
-		_, err := mediator.Send[CloseSessionCommand, core.Unit](m, ctx, command)
-		if err != nil {
-			core.WriteCommandError(w, r, err)
-			return
-		}
-
-		core.WriteOK(w, r, nil)
+	command := CloseSessionCommand{
+		SessionID: chi.URLParam(r, "id"),
+		UserID:    core.Session(ctx).UserID,
 	}
+
+	_, err := mediator.Send[CloseSessionCommand, core.Unit](ctx, command)
+	if err != nil {
+		core.WriteCommandError(w, r, err)
+		return
+	}
+
+	core.WriteOK(w, r, nil)
 }
 
 type CloseSessionCommandHandler struct {

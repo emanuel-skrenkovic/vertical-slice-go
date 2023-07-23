@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/docker/go-connections v0.4.0
-	github.com/eskrenkovic/mediator-go v0.0.1
+	github.com/eskrenkovic/mediator-go v0.1.0
 	github.com/eskrenkovic/migrate-go v0.1.4
 	github.com/eskrenkovic/tql v0.3.0
 	github.com/go-chi/chi v1.5.4

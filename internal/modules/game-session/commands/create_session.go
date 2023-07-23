@@ -4,7 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/http"
+	"path"
 
+	"github.com/eskrenkovic/mediator-go"
+	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/domain"
 
 	"github.com/eskrenkovic/tql"
@@ -30,6 +34,26 @@ func (c CreateSessionCommand) Validate() error {
 
 type CreateSessionResponse struct {
 	SessionID string
+}
+
+func HandleCreateGameSession(w http.ResponseWriter, r *http.Request) {
+	command, err := core.RequestBody[CreateSessionCommand](r)
+	if err != nil {
+		core.WriteBadRequest(w, r, err)
+		return
+	}
+
+	response, err := mediator.Send[CreateSessionCommand, CreateSessionResponse](
+		r.Context(),
+		command,
+	)
+	if err != nil {
+		core.WriteCommandError(w, r, err)
+		return
+	}
+
+	location := path.Join(r.Host, "game-sessions", response.SessionID)
+	core.WriteCreated(w, r, location)
 }
 
 type CreateSessionCommandHandler struct {

@@ -27,22 +27,20 @@ func (c VerifyRegistrationCommand) Validate() error {
 	return nil
 }
 
-func HandleVerifyRegistration(m *mediator.Mediator) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		token := r.URL.Query().Get("token")
-		if token == "" {
-			core.WriteBadRequest(w, r, fmt.Errorf("invalid token"))
-		}
-
-		command := VerifyRegistrationCommand{Token: token}
-		_, err := mediator.Send[VerifyRegistrationCommand, core.Unit](m, r.Context(), command)
-		if err != nil {
-			core.WriteCommandError(w, r, err)
-			return
-		}
-
-		core.WriteOK(w, r, nil)
+func HandleVerifyRegistration(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		core.WriteBadRequest(w, r, fmt.Errorf("invalid token"))
 	}
+
+	command := VerifyRegistrationCommand{Token: token}
+	_, err := mediator.Send[VerifyRegistrationCommand, core.Unit](r.Context(), command)
+	if err != nil {
+		core.WriteCommandError(w, r, err)
+		return
+	}
+
+	core.WriteOK(w, r, nil)
 }
 
 type VerifyRegistrationCommandHandler struct {
