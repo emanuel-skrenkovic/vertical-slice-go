@@ -71,6 +71,7 @@ func (h *CreateSessionCommandHandler) Handle(
 	session := domain.Session{
 		ID:      uuid.NewString(),
 		OwnerID: request.OwnerID,
+		Name:    request.Name,
 	}
 
 	const stmt = `

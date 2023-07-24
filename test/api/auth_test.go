@@ -407,7 +407,6 @@ func Test_Login_With_Valid_Password_Succeeds(t *testing.T) {
 		loginCommand,
 		func(resp *http.Response) {
 			require.Equal(t, http.StatusOK, resp.StatusCode)
-
 			require.Greater(t, len(resp.Cookies()), 0)
 		},
 	)
