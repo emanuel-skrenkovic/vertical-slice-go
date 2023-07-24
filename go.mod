@@ -6,7 +6,7 @@ require (
 	github.com/docker/go-connections v0.4.0
 	github.com/eskrenkovic/mediator-go v0.1.0
 	github.com/eskrenkovic/migrate-go v0.1.4
-	github.com/eskrenkovic/tql v0.3.0
+	github.com/eskrenkovic/tql v0.3.1
 	github.com/go-chi/chi v1.5.4
 	github.com/google/uuid v1.3.0
 	github.com/joho/godotenv v1.4.0

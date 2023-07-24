@@ -358,8 +358,8 @@ github.com/eskrenkovic/mediator-go v0.1.0 h1:FXHj9mZLKJM2OMOxPTsL89wUjdFk5d1sllA
 github.com/eskrenkovic/mediator-go v0.1.0/go.mod h1:iJK9CtP3NG/H2RdSdJEtk5UO2Awx0XI0xf+Z5rTFsso=
 github.com/eskrenkovic/migrate-go v0.1.4 h1:rChNlu2gDmqtkEZEqJ7ozNyA05VDAvZkbWOhUyXthl4=
 github.com/eskrenkovic/migrate-go v0.1.4/go.mod h1:hDAk8odV+j+FaEER+6FGc16tiIoV72md/sAPBa0ODno=
-github.com/eskrenkovic/tql v0.3.0 h1:M9YuXftDifPyisOqYMNaxElaykKlSJvVkThK6B8FatQ=
-github.com/eskrenkovic/tql v0.3.0/go.mod h1:yeYkkW6yFSltuItaAZR9dHIs8O+87WPiHVMCjtHqrXs=
+github.com/eskrenkovic/tql v0.3.1 h1:AA38vMofJvVKKhSGUDGLfNK5mcqT9uggYtjUowt8+aI=
+github.com/eskrenkovic/tql v0.3.1/go.mod h1:yeYkkW6yFSltuItaAZR9dHIs8O+87WPiHVMCjtHqrXs=
 github.com/evanphx/json-patch v4.9.0+incompatible/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
 github.com/evanphx/json-patch v4.11.0+incompatible/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
