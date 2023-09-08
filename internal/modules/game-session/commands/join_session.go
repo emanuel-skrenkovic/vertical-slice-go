@@ -40,7 +40,7 @@ func HandleJoinSession(w http.ResponseWriter, r *http.Request) {
 
 	command := JoinSessionCommand{
 		SessionID: chi.URLParam(r, "id"),
-		PlayerID:  core.Session(ctx).UserID, // you join someone else's session as the logged in user
+		PlayerID:  core.Session(ctx).UserID, // you join someone else's session as the logged-in user
 	}
 
 	_, err := mediator.Send[JoinSessionCommand, core.Unit](ctx, command)
@@ -71,8 +71,7 @@ func (h *JoinSessionCommandHandler) Handle(
 			active = true
 		WHERE
 			session_id = $1 AND owner_id = $2;`
-	_, err := tql.Exec(ctx, h.db, stmt, request.SessionID, request.PlayerID)
-	if err != nil {
+	if _, err := tql.Exec(ctx, h.db, stmt, request.SessionID, request.PlayerID); err != nil {
 		return JoinSessionResponse{}, core.NewCommandError(400, err)
 	}
 

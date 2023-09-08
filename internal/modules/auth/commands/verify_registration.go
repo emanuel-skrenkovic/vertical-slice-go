@@ -91,7 +91,7 @@ func (h *VerifyRegistrationCommandHandler) Handle(
 		return core.Unit{}, core.NewCommandError(400, err, core.WithReason(invalidTokenMessage))
 	}
 
-	updateParams := map[string]interface{}{
+	updateParams := map[string]any{
 		"user_id":            user.ID,
 		"old_security_stamp": activationCode.SecurityStamp,
 		"new_security_stamp": uuid.New(),

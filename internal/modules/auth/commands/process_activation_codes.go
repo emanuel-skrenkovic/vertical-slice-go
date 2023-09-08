@@ -76,7 +76,13 @@ func (h *ProcessActivationCodesCommandHandler) Handle(
 		return c.UserID
 	})
 
-	const usersQuery = `SELECT * FROM auth.user WHERE id = ANY($1);`
+	const usersQuery = `
+		SELECT 
+		    * 
+		FROM 
+		    auth.user 
+		WHERE 
+		    id = ANY($1);`
 	users, err := tql.Query[domain.User](ctx, h.db, usersQuery, pq.Array(userIDs))
 	if err != nil {
 		return core.Unit{}, err

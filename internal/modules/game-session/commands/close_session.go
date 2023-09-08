@@ -57,7 +57,7 @@ func (h *CloseSessionCommandHandler) Handle(
 	ctx context.Context,
 	request CloseSessionCommand,
 ) (core.Unit, error) {
-	txFn := func(context.Context, *sql.Tx) error {
+	txFn := func(ctx context.Context, tx *sql.Tx) error {
 		const stmt = `
 			UPDATE
 				game_session
@@ -66,7 +66,7 @@ func (h *CloseSessionCommandHandler) Handle(
 			WHERE
 				id = $1 AND owner_id == $2;`
 
-		if _, err := tql.Exec(ctx, h.db, stmt, request.SessionID, request.UserID); err != nil {
+		if _, err := tql.Exec(ctx, tx, stmt, request.SessionID, request.UserID); err != nil {
 			return err
 		}
 
@@ -77,7 +77,7 @@ func (h *CloseSessionCommandHandler) Handle(
 				active = false
 			WHERE
 				session_id = $1;`
-		_, err := tql.Exec(ctx, h.db, invitationStmt, request.SessionID)
+		_, err := tql.Exec(ctx, tx, invitationStmt, request.SessionID)
 		return err
 	}
 
