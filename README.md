@@ -12,3 +12,9 @@ It does not have a purpose other than for me to play around when learning.
 * **infra-up**: starts the supporting infrastructure for the integration tests. Useful for avoiding waiting for Docker
 containers to start up before running the tests.
 * **infra-down**: stops the supporting infrastructure for integration tests.
+
+## What I'm exploring here
+Mostly the following concepts and how they feel when being utilised in Golang.
+* [Vertical slice architecture](https://www.jimmybogard.com/vertical-slice-architecture/)
+* CQRS
+* Event-sourcing (didn't get to that part yet)
