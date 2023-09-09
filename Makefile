@@ -14,10 +14,6 @@ lint:
 test:
 	go test -v -count=1 -timeout=5s ./test/...
 
-.PHONY: docker-build
-docker-build:
-	docker build -t vertical-slice-go -t registry.fly.io/vertical-slice-go:latest --build-arg github_token=$(GITHUB_TOKEN) --build-arg goprivate=$(GOPRIVATE) .
-
 .PHONY: infra-up
 infra-up:
 	[ -f config.local.env ] || echo "SKIP_INFRASTRUCTURE=true" > config.local.env
