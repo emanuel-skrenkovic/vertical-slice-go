@@ -8,7 +8,7 @@ run:
 
 .PHONY: lint
 lint:
-	golangci-lint run --timeout 1m
+	golangci-lint run --timeout 3m
 
 .PHONY: test
 test:
