@@ -1,13 +1,14 @@
 package tests
 
 import (
+	"os"
+	"strings"
 	"fmt"
+
 	"github.com/docker/go-connections/nat"
 	"github.com/google/uuid"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"os"
-	"strings"
 )
 
 type LocalTestFixture struct {
