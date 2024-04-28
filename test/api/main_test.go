@@ -1,13 +1,12 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/eskrenkovic/vertical-slice-go/internal/config"
-	"github.com/eskrenkovic/vertical-slice-go/internal/modules/tests"
-	"github.com/eskrenkovic/vertical-slice-go/internal/server"
-	"github.com/joho/godotenv"
+	"github.com/docker/go-connections/nat"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"go.uber.org/zap"
 	"log"
 	"net/http"
@@ -15,6 +14,12 @@ import (
 	"os"
 	"path"
 	"testing"
+
+	"github.com/eskrenkovic/vertical-slice-go/internal/config"
+	"github.com/eskrenkovic/vertical-slice-go/internal/modules/tests"
+	"github.com/eskrenkovic/vertical-slice-go/internal/server"
+
+	"github.com/joho/godotenv"
 )
 
 type IntegrationTestFixture struct {
@@ -23,7 +28,7 @@ type IntegrationTestFixture struct {
 	db      *sql.DB
 }
 
-var fixture IntegrationTestFixture
+var fixture = IntegrationTestFixture{}
 
 func TestMain(m *testing.M) {
 	rootPath := "../../"
@@ -65,20 +70,35 @@ func TestMain(m *testing.M) {
 
 	conf.Logger = zap.NewNop()
 
-	fixture, err := tests.NewLocalTestFixture(path.Join(rootPath, "docker-compose.yml"), conf.DatabaseURL)
-	if err != nil {
-		log.Fatal(err)
+	pgPort := nat.Port(fmt.Sprintf("%d", 5432))
+	mailhogPort := nat.Port(fmt.Sprintf("%d", 8025))
+
+	waitStrategies := map[string]wait.Strategy{
+		"vsg-postgres": wait.ForSQL(pgPort, "postgres", func(string, nat.Port) string { return conf.DatabaseURL }),
+		"vsg-mailhog":  wait.ForHTTP("").WithPort(mailhogPort),
 	}
 
-	if err := fixture.Start(); err != nil {
-		log.Fatal(err)
-	}
+	ctx := context.Background()
+
+	composePath := path.Join(rootPath, "docker-compose.yml")
+	fmt.Println(composePath)
+	f, err := tests.NewLocalTestFixture(composePath, waitStrategies)
 
 	defer func() {
-		if err := fixture.Stop(); err != nil {
+		if err := recover(); err != nil {
+			fmt.Printf("unrecovarable error occurred: %+v", err)
+		}
+	}()
+
+	defer func() {
+		if err := f.Stop(ctx); err != nil {
 			log.Fatal(err)
 		}
 	}()
+
+	if err := f.Start(ctx); err != nil {
+		log.Fatal(err)
+	}
 
 	if err := initFixture(conf); err != nil {
 		log.Fatal(err)

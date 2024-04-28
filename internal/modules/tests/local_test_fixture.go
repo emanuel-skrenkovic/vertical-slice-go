@@ -1,67 +1,44 @@
 package tests
 
 import (
+	"context"
 	"os"
-	"strings"
-	"fmt"
 
-	"github.com/docker/go-connections/nat"
-	"github.com/google/uuid"
-	"github.com/testcontainers/testcontainers-go"
+	tc "github.com/testcontainers/testcontainers-go/modules/compose"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 type LocalTestFixture struct {
-	dockerComposePath string
-	compose           testcontainers.DockerCompose
+	compose tc.ComposeStack
 }
 
-func NewLocalTestFixture(dockerComposePath string, dbURL string) (LocalTestFixture, error) {
-	compose := testcontainers.NewLocalDockerCompose([]string{dockerComposePath}, uuid.New().String())
-
-	for serviceName := range compose.Services {
-		if strings.Contains(serviceName, "postgres") {
-			port := 5432 // TODO: actually pull the port from the service definition
-
-			compose.WithExposedService(
-				serviceName,
-				port,
-				wait.ForSQL(nat.Port(fmt.Sprintf("%d", port)), "postgres", func(nat.Port) string {
-					return dbURL
-				}),
-			)
-		} else if strings.Contains(serviceName, "mailhog") {
-			port := 8025
-			compose.WithExposedService(
-				serviceName,
-				port,
-				wait.
-					ForHTTP("").
-					WithPort(nat.Port(fmt.Sprintf("%d", port))),
-			)
-		}
+func NewLocalTestFixture(dockerComposePath string, strategies map[string]wait.Strategy) (LocalTestFixture, error) {
+	compose, err := tc.NewDockerCompose(dockerComposePath)
+	if err != nil {
+		return LocalTestFixture{}, err
 	}
 
-	return LocalTestFixture{
-		dockerComposePath: dockerComposePath,
-		compose:           compose.WithCommand([]string{"up", "--build", "-d"}),
-	}, nil
+	fixture := LocalTestFixture{compose}
+
+	for serviceName, strategy := range strategies {
+		fixture.compose = compose.WaitForService(serviceName, strategy)
+	}
+
+	return fixture, nil
 }
 
-func (f *LocalTestFixture) Start() error {
+func (f *LocalTestFixture) Start(ctx context.Context) error {
 	if skip := os.Getenv("SKIP_INFRASTRUCTURE"); skip == "true" {
 		return nil
 	}
 
-	execErr := f.compose.Invoke()
-	return execErr.Error
+	return f.compose.Up(ctx)
 }
 
-func (f *LocalTestFixture) Stop() error {
+func (f *LocalTestFixture) Stop(ctx context.Context) error {
 	if skip := os.Getenv("SKIP_INFRASTRUCTURE"); skip == "true" {
 		return nil
 	}
 
-	execErr := f.compose.Down()
-	return execErr.Error
+	return f.compose.Down(ctx)
 }
