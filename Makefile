@@ -1,14 +1,14 @@
+.PHONY: lint
+lint: build
+	golangci-lint run --timeout 3m
+
 .PHONY: build
-build: lint
+build:
 	go build cmd/api/main.go
 
 .PHONY: run
 run:
 	go run cmd/api/main.go $(shell pwd)
-
-.PHONY: lint
-lint:
-	golangci-lint run
 
 .PHONY: test
 test:

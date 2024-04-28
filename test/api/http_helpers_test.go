@@ -9,8 +9,9 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/eskrenkovic/tql"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/commands"
+
+	"github.com/eskrenkovic/tql"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
