@@ -83,6 +83,9 @@ func TestMain(m *testing.M) {
 	composePath := path.Join(rootPath, "docker-compose.yml")
 	fmt.Println(composePath)
 	f, err := tests.NewLocalTestFixture(composePath, waitStrategies)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	defer func() {
 		if err := recover(); err != nil {
