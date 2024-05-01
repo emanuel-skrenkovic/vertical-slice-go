@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 	"encoding/json"
-	"go.uber.org/zap"
 	"net/http"
 )
 
@@ -84,12 +83,12 @@ func writeBodyIfPresent(ctx context.Context, w http.ResponseWriter, body interfa
 	if err, ok := body.(error); ok {
 		responseBytes, err := json.Marshal(err)
 		if err != nil {
-			LogError(ctx, "failed to serialize response error", zap.Error(err))
+			LogError(ctx, "failed to serialize response error", "error", err)
 			return
 		}
 
 		if _, err := w.Write(responseBytes); err != nil {
-			LogError(ctx, "failed to write response", zap.Error(err))
+			LogError(ctx, "failed to write response", "error", err)
 		}
 		return
 	}
@@ -97,12 +96,12 @@ func writeBodyIfPresent(ctx context.Context, w http.ResponseWriter, body interfa
 	responseBytes, err := json.Marshal(body)
 	if err != nil {
 		if _, err := w.Write([]byte(err.Error())); err != nil {
-			LogError(ctx, "failed to write response", zap.Error(err))
+			LogError(ctx, "failed to write response", "error", err)
 		}
 		return
 	}
 
 	if _, err := w.Write(responseBytes); err != nil {
-		LogError(ctx, "failed to write response", zap.Error(err))
+		LogError(ctx, "failed to write response", "error", err)
 	}
 }

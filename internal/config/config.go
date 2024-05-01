@@ -2,10 +2,10 @@ package config
 
 import (
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/env"
+	"log/slog"
 	"net/url"
+	"os"
 	"path"
-
-	"go.uber.org/zap"
 )
 
 const (
@@ -27,7 +27,7 @@ type EmailConfiguration struct {
 }
 
 type Config struct {
-	Logger *zap.Logger
+	Logger *slog.Logger
 
 	Port           int
 	DatabaseURL    string
@@ -37,10 +37,7 @@ type Config struct {
 }
 
 func Load() (Config, error) {
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		return Config{}, err
-	}
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
 	port := env.MustGetInt(PortEnv)
 	dbURL := env.MustGetString(DatabaseUrlEnv)
