@@ -32,10 +32,13 @@ func (b *RequestValidationBehavior) Handle(
 	request any,
 	next mediator.RequestHandlerFunc,
 ) (any, error) {
-	if request, ok := request.(Validator); ok {
-		if err := request.Validate(); err != nil {
-			return nil, NewCommandError(400, err, WithReason("request validation failed"))
-		}
+	v, ok := request.(Validator)
+	if !ok {
+		return next(ctx, request)
+	}
+
+	if err := v.Validate(); err != nil {
+		return nil, NewCommandError(400, err, WithReason("request validation failed"))
 	}
 
 	return next(ctx, request)
