@@ -5,10 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/docker/go-connections/nat"
-	"github.com/testcontainers/testcontainers-go/wait"
-	"go.uber.org/zap"
+	"io"
 	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -19,7 +18,9 @@ import (
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/tests"
 	"github.com/eskrenkovic/vertical-slice-go/internal/server"
 
+	"github.com/docker/go-connections/nat"
 	"github.com/joho/godotenv"
+	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 type IntegrationTestFixture struct {
@@ -68,7 +69,7 @@ func TestMain(m *testing.M) {
 		log.Fatal(err)
 	}
 
-	conf.Logger = zap.NewNop()
+	conf.Logger = slog.New(slog.NewJSONHandler(io.Discard, nil))
 
 	pgPort := nat.Port(fmt.Sprintf("%d", 5432))
 	mailhogPort := nat.Port(fmt.Sprintf("%d", 8025))
