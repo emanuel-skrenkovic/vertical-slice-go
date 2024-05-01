@@ -29,9 +29,9 @@ type RequestLoggingBehavior struct {
 
 func (b *RequestLoggingBehavior) Handle(
 	ctx context.Context,
-	request interface{},
+	request any,
 	next mediator.RequestHandlerFunc,
-) (interface{}, error) {
+) (any, error) {
 	var logFields []any
 
 	requestID := ctx.Value(0)
@@ -61,9 +61,9 @@ type HandlerErrorLoggingBehavior struct {
 
 func (b *HandlerErrorLoggingBehavior) Handle(
 	ctx context.Context,
-	request interface{},
+	request any,
 	next mediator.RequestHandlerFunc,
-) (interface{}, error) {
+) (any, error) {
 	response, err := next(ctx, request)
 	if err != nil {
 		b.Logger.Error("handler returned error", "error", err)

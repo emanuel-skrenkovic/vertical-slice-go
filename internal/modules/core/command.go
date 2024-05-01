@@ -5,7 +5,7 @@ import "fmt"
 type Unit struct{}
 
 type CommandError struct {
-	Payload    interface{}
+	Payload    any
 	StatusCode int
 	Reason     *string
 }
@@ -18,7 +18,7 @@ func WithReason(reason string) CommandErrorOption {
 	}
 }
 
-func NewCommandError(statusCode int, payload interface{}, opts ...CommandErrorOption) CommandError {
+func NewCommandError(statusCode int, payload any, opts ...CommandErrorOption) CommandError {
 	e := CommandError{
 		StatusCode: statusCode,
 		Payload:    payload,
@@ -33,9 +33,9 @@ func NewCommandError(statusCode int, payload interface{}, opts ...CommandErrorOp
 
 func (r CommandError) Error() string {
 	var values struct {
-		Payload    interface{} `json:"payload"`
-		StatusCode int         `json:"statusCode"`
-		Reason     string      `json:"reason"`
+		Payload    any    `json:"payload"`
+		StatusCode int    `json:"statusCode"`
+		Reason     string `json:"reason"`
 	}
 
 	values.Payload = r.Payload

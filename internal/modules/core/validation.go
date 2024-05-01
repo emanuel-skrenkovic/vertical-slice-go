@@ -25,13 +25,13 @@ func (e ValidationError) Error() string {
 	return b.String()
 }
 
-type RequestValidationBehavior struct {}
+type RequestValidationBehavior struct{}
 
 func (b *RequestValidationBehavior) Handle(
 	ctx context.Context,
-	request interface{},
+	request any,
 	next mediator.RequestHandlerFunc,
-) (interface{}, error) {
+) (any, error) {
 	if request, ok := request.(Validator); ok {
 		if err := request.Validate(); err != nil {
 			return nil, NewCommandError(400, err, WithReason("request validation failed"))

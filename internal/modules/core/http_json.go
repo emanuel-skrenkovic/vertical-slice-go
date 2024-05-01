@@ -20,13 +20,13 @@ func WithHeader(header, value string) ResponseOption {
 	}
 }
 
-func WithBody(body interface{}) ResponseOption {
+func WithBody(body any) ResponseOption {
 	return func(w http.ResponseWriter, r *http.Request) {
 		writeBodyIfPresent(r.Context(), w, body)
 	}
 }
 
-func WriteOK(w http.ResponseWriter, r *http.Request, body interface{}) {
+func WriteOK(w http.ResponseWriter, r *http.Request, body any) {
 	WriteResponse(w, r, 200, body)
 }
 
@@ -35,19 +35,19 @@ func WriteCreated(w http.ResponseWriter, r *http.Request, location string, opts 
 	WriteResponse(w, r, 201, nil, WithHeader("Location", location))
 }
 
-func WriteBadRequest(w http.ResponseWriter, r *http.Request, body interface{}) {
+func WriteBadRequest(w http.ResponseWriter, r *http.Request, body any) {
 	WriteResponse(w, r, 400, body)
 }
 
-func WriteUnauthorized(w http.ResponseWriter, r *http.Request, body interface{}) {
+func WriteUnauthorized(w http.ResponseWriter, r *http.Request, body any) {
 	WriteResponse(w, r, 401, body)
 }
 
-func WriteInternalServerError(w http.ResponseWriter, r *http.Request, body interface{}) {
+func WriteInternalServerError(w http.ResponseWriter, r *http.Request, body any) {
 	WriteResponse(w, r, 500, body)
 }
 
-func WriteBadGateway(w http.ResponseWriter, r *http.Request, body interface{}) {
+func WriteBadGateway(w http.ResponseWriter, r *http.Request, body any) {
 	WriteResponse(w, r, 502, body)
 }
 
@@ -63,7 +63,7 @@ func WriteResponse(
 	w http.ResponseWriter,
 	r *http.Request,
 	statusCode int,
-	body interface{},
+	body any,
 	opts ...ResponseOption,
 ) {
 	for _, opt := range opts {
@@ -73,7 +73,7 @@ func WriteResponse(
 	writeBodyIfPresent(r.Context(), w, body)
 }
 
-func writeBodyIfPresent(ctx context.Context, w http.ResponseWriter, body interface{}) {
+func writeBodyIfPresent(ctx context.Context, w http.ResponseWriter, body any) {
 	if body == nil {
 		return
 	}
