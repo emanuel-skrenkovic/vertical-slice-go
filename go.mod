@@ -7,7 +7,6 @@ require (
 	github.com/eskrenkovic/mediator-go v0.1.0
 	github.com/eskrenkovic/migrate-go v0.1.4
 	github.com/eskrenkovic/tql v0.5.0
-	github.com/go-chi/chi v1.5.4
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.4.0
 	github.com/lib/pq v1.10.7

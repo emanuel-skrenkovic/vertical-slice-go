@@ -6,12 +6,11 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/eskrenkovic/mediator-go"
-	"github.com/eskrenkovic/tql"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/core"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/domain"
-	"github.com/go-chi/chi"
 
+	"github.com/eskrenkovic/mediator-go"
+	"github.com/eskrenkovic/tql"
 	"github.com/google/uuid"
 )
 
@@ -42,7 +41,7 @@ func HandleCreateSessionInvitation(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		core.WriteBadRequest(w, r, err)
 	}
-	command.SessionID = chi.URLParam(r, "id")
+	command.SessionID = r.PathValue("id")
 
 	_, err = mediator.Send[CreateSessionInvitationCommand, core.Unit](r.Context(), command)
 	if err != nil {

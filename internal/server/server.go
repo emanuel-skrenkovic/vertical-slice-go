@@ -10,8 +10,6 @@ import (
 	"net/smtp"
 	"strings"
 
-	"github.com/eskrenkovic/mediator-go"
-	"github.com/eskrenkovic/migrate-go"
 	"github.com/eskrenkovic/vertical-slice-go/internal/config"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth"
 	"github.com/eskrenkovic/vertical-slice-go/internal/modules/auth/commands"
@@ -22,8 +20,8 @@ import (
 	gamesessiondomain "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/domain"
 	gamesessionqueries "github.com/eskrenkovic/vertical-slice-go/internal/modules/game-session/queries"
 
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
+	"github.com/eskrenkovic/mediator-go"
+	"github.com/eskrenkovic/migrate-go"
 	_ "github.com/lib/pq"
 )
 
@@ -42,10 +40,8 @@ type HTTPServer struct {
 func NewHTTPServer(config config.Config) (Server, error) {
 	baseCtx := context.Background()
 
-	router := chi.NewRouter()
 	server := http.Server{
-		Addr:    net.JoinHostPort("", "8080"),
-		Handler: handlerWithBaseContext(baseCtx, router),
+		Addr: net.JoinHostPort("", "8080"),
 	}
 
 	db, err := sql.Open("postgres", config.DatabaseURL)
@@ -160,38 +156,28 @@ func NewHTTPServer(config config.Config) (Server, error) {
 		return nil, err
 	}
 
+	r := router{middleware: []httpMiddleware{
+		baseContextMiddleware(baseCtx),
+		core.CorrelationIDHTTPMiddleware,
+	}}
+
 	// http
 
-	router.Group(func(r chi.Router) {
-		router.Route("/game-sessions", func(r chi.Router) {
-			r.Use(middleware.StripSlashes)
-			r.Use(middleware.RequestID)
-			r.Use(core.CorrelationIDHTTPMiddleware)
+	r.register("GET /game-sessions", gamesessionqueries.HandleGetOwnedSessions, auth.AuthenticationMiddleware(db))
+	r.register("POST /game-sessions", gamesessioncommands.HandleCreateGameSession, auth.AuthenticationMiddleware(db))
 
-			r.Use(auth.AuthenticationMiddleware(db))
+	r.register("POST /game-sessions/{id}/invitations", gamesessioncommands.HandleCreateSessionInvitation, auth.AuthenticationMiddleware(db))
 
-			r.Get("/", gamesessionqueries.HandleGetOwnedSessions)
-			r.Post("/", gamesessioncommands.HandleCreateGameSession)
+	r.register("PUT /game-sessions/{id}/actions/close", gamesessioncommands.HandleCloseSession, auth.AuthenticationMiddleware(db))
+	r.register("PUT /game-sessions/{id}/actions/join", gamesessioncommands.HandleJoinSession, auth.AuthenticationMiddleware(db))
 
-			r.Post("/{id}/invitations", gamesessioncommands.HandleCreateSessionInvitation)
+	r.register("POST /auth/login", authcommands.HandleLogin)
+	r.register("POST /auth/logout", authcommands.HandleLogout)
 
-			r.Put("/{id}/actions/close", gamesessioncommands.HandleCloseSession)
-			r.Put("/{id}/actions/join", gamesessioncommands.HandleJoinSession)
-		})
-
-		router.Route("/auth", func(r chi.Router) {
-			r.Use(middleware.StripSlashes)
-			r.Use(middleware.RequestID)
-			r.Use(core.CorrelationIDHTTPMiddleware)
-
-			r.Post("/login", authcommands.HandleLogin)
-			r.Post("/logout", authcommands.HandleLogout)
-			r.Post("/registrations", authcommands.HandleRegistration)
-			r.Post("/registrations/actions/confirm", authcommands.HandleVerifyRegistration)
-			r.Post("/registrations/actions/publish-confirmation-emails", authcommands.HandlePublishConfirmationEmails)
-			r.Post("/registrations/actions/send-activation-code", authcommands.HandleReSendConfirmationEmail)
-		})
-	})
+	r.register("POST /auth/registrations", authcommands.HandleRegistration)
+	r.register("POST /auth/registrations/actions/confirm", authcommands.HandleVerifyRegistration)
+	r.register("POST /auth/registrations/actions/publish-confirmation-emails", authcommands.HandlePublishConfirmationEmails)
+	r.register("POST /auth/registrations/actions/send-activation-code", authcommands.HandleReSendConfirmationEmail)
 
 	return &HTTPServer{server: &server}, nil
 }
@@ -208,19 +194,39 @@ func (s *HTTPServer) Stop() error {
 	return s.server.Close()
 }
 
-func handlerWithBaseContext(baseCtx context.Context, handler http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		baseCtx := baseCtx
+type httpMiddleware func(http.HandlerFunc) http.HandlerFunc
 
-		if v, ok := ctx.Value(http.ServerContextKey).(*http.Server); ok {
-			baseCtx = context.WithValue(baseCtx, http.ServerContextKey, v)
+type router struct {
+	middleware []httpMiddleware
+}
+
+func (r *router) register(pattern string, handler http.HandlerFunc, middleware ...httpMiddleware) {
+	h := handler
+
+	allMiddleware := append(r.middleware, middleware...)
+
+	for i := len(allMiddleware) - 1; i >= 0; i-- {
+		h = allMiddleware[i](h)
+	}
+
+	http.HandleFunc(pattern, h)
+}
+
+func baseContextMiddleware(baseCtx context.Context) func(http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+			baseCtx := baseCtx
+
+			if v, ok := ctx.Value(http.ServerContextKey).(*http.Server); ok {
+				baseCtx = context.WithValue(baseCtx, http.ServerContextKey, v)
+			}
+
+			if v, ok := ctx.Value(http.LocalAddrContextKey).(net.Addr); ok {
+				baseCtx = context.WithValue(baseCtx, http.LocalAddrContextKey, v)
+			}
+
+			next.ServeHTTP(w, r.WithContext(baseCtx))
 		}
-
-		if v, ok := ctx.Value(http.LocalAddrContextKey).(net.Addr); ok {
-			baseCtx = context.WithValue(baseCtx, http.LocalAddrContextKey, v)
-		}
-
-		handler.ServeHTTP(w, r.WithContext(baseCtx))
-	})
+	}
 }

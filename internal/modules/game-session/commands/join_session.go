@@ -10,7 +10,6 @@ import (
 
 	"github.com/eskrenkovic/mediator-go"
 	"github.com/eskrenkovic/tql"
-	"github.com/go-chi/chi"
 	"github.com/google/uuid"
 )
 
@@ -39,7 +38,7 @@ func HandleJoinSession(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	command := JoinSessionCommand{
-		SessionID: chi.URLParam(r, "id"),
+		SessionID: r.PathValue("id"),
 		PlayerID:  core.Session(ctx).UserID, // you join someone else's session as the logged-in user
 	}
 
