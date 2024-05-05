@@ -11,7 +11,6 @@ import (
 
 	"github.com/eskrenkovic/mediator-go"
 	"github.com/eskrenkovic/tql"
-	"github.com/go-chi/chi"
 	"github.com/google/uuid"
 )
 
@@ -32,7 +31,7 @@ func HandleCloseSession(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	command := CloseSessionCommand{
-		SessionID: chi.URLParam(r, "id"),
+		SessionID: r.PathValue("id"),
 		UserID:    core.Session(ctx).UserID,
 	}
 

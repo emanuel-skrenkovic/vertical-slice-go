@@ -12,9 +12,9 @@ import (
 	"github.com/eskrenkovic/tql"
 )
 
-func AuthenticationMiddleware(db *sql.DB) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func AuthenticationMiddleware(db *sql.DB) func(http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
 			sessionIDCookie, err := r.Cookie("chess-session")
 			if err != nil {
 				core.WriteUnauthorized(w, r, nil)
@@ -46,6 +46,6 @@ func AuthenticationMiddleware(db *sql.DB) func(http.Handler) http.Handler {
 
 			authContext := context.WithValue(r.Context(), core.SessionContextKey, session)
 			next.ServeHTTP(w, r.WithContext(authContext))
-		})
+		}
 	}
 }

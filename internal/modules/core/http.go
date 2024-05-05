@@ -14,8 +14,8 @@ const (
 	CorrelationIDContextKey contextKey = "correlation_id"
 )
 
-func CorrelationIDHTTPMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func CorrelationIDHTTPMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
 		correlationID := r.Header.Get(CorrelationIDHeader)
@@ -25,5 +25,5 @@ func CorrelationIDHTTPMiddleware(next http.Handler) http.Handler {
 
 		ctx = context.WithValue(ctx, CorrelationIDContextKey, correlationID)
 		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+	}
 }

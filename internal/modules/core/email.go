@@ -49,7 +49,7 @@ func NewEmailClient(
 	host *url.URL,
 	auth smtp.Auth,
 ) *EmailClient {
-	return &EmailClient{auth: auth, host: host.Host,}
+	return &EmailClient{auth: auth, host: host.Host}
 }
 
 func (c *EmailClient) Send(m MailMessage) error {
