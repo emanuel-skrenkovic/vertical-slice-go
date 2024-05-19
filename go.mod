@@ -199,4 +199,4 @@ require (
 	tags.cncf.io/container-device-interface v0.7.2 // indirect
 )
 
-replace github.com/fsnotify/fsevents => github.com/emanuel-skrenkovic/fsevents v0.0.0-20240430230548-290b1b397cf5
+replace github.com/fsnotify/fsevents => github.com/fsnotify/fsevents v0.2.0
